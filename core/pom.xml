@@ -10,7 +10,8 @@
     </parent>
     <artifactId>autorest-gwt</artifactId>
     <packaging>jar</packaging>
-    <description>Auto RESTful Service Proxy Generator for GWT.</description>
+    <name>AutoRest :: Core</name>
+    <description>A source code generator for GWT compatible proxies from RESTful services (JSR311).</description>
 
     <dependencies>
         <dependency>
