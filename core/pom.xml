@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.intendia.gwt.autorest</groupId>
+        <artifactId>autorest-gwt-parent</artifactId>
+        <version>0.1-SNAPSHOT</version>
+    </parent>
+    <artifactId>autorest-gwt</artifactId>
+    <packaging>jar</packaging>
+    <description>Auto RESTful Service Proxy Generator for GWT.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.intendia.gwt</groupId>
+            <artifactId>rxjava-gwt</artifactId>
+            <version>${rxjava-gwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auto</groupId>
+            <artifactId>auto-common</artifactId>
+            <version>0.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+            <version>1.5.1</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>jsr311-api</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/java</directory>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.3</version>
+                <configuration>
+                    <proc>none</proc>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>run-its</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-invoker-plugin</artifactId>
+                        <version>1.5</version>
+                        <configuration>
+                            <debug>true</debug>
+                            <projectsDirectory>${basedir}/../example</projectsDirectory>
+                            <pomIncludes>
+                                <pomInclude>pom.xml</pomInclude>
+                            </pomIncludes>
+                            <preBuildHookScript>setup</preBuildHookScript>
+                            <postBuildHookScript>verify</postBuildHookScript>
+                            <goals>
+                                <goal>clean</goal>
+                                <goal>install</goal>
+                            </goals>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-test</id>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
+
+
