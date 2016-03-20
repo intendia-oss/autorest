@@ -1,6 +1,6 @@
 package com.intendia.gwt.autorest.example.client;
 
-public interface Interface {
+public interface Greeting {
 
     String getGreeting();
 

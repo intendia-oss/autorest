@@ -3,34 +3,26 @@ package com.intendia.gwt.autorest.processor;
 import static com.google.auto.common.MoreElements.getAnnotationMirror;
 import static com.google.auto.common.MoreTypes.asElement;
 import static com.google.auto.common.MoreTypes.isTypeOf;
-import static com.google.common.collect.FluentIterable.from;
 import static java.util.Collections.singleton;
+import static java.util.Optional.ofNullable;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
-import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
-import com.google.common.collect.FluentIterable;
-import com.google.gwt.core.client.JavaScriptObject;
-import com.google.gwt.core.client.js.JsType;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.AutoRestGwt.TypeMap;
 import com.intendia.gwt.autorest.client.Dispatcher;
 import com.intendia.gwt.autorest.client.Resource;
 import com.intendia.gwt.autorest.client.RestServiceProxy;
-import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
@@ -41,8 +33,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.MirroredTypeException;
-import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.HttpMethod;
@@ -75,25 +65,19 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     }
 
     private void processAnnotations() throws Exception {
-        List<? extends TypeElement> elements = from(roundEnv.getElementsAnnotatedWith(AutoRestGwt.class))
-                .filter(TypeElement.class)
-                .filter(input -> input.getKind().isInterface())
-                .toList();
+        List<TypeElement> elements = roundEnv.getElementsAnnotatedWith(AutoRestGwt.class).stream()
+                .filter(e -> e.getKind().isInterface() && e instanceof TypeElement)
+                .map(e -> (TypeElement) e).collect(Collectors.toList());
 
         log(annotations.toString());
         log(elements.toString());
 
-        Map<TypeMirror, TypeMirror> typeMap = new HashMap<>();
-
         for (TypeElement restService : elements) {
+            //noinspection OptionalGetWithoutIsPresent
             AnnotationMirror annotation = getAnnotationMirror(restService, AutoRestGwt.class).get();
 
-            TypeMap[] types = restService.getAnnotation(AutoRestGwt.class).types();
-            for (TypeMap type : types) typeMap.put(typeMap_type(type), typeMap_with(type));
-            Function<TypeMirror, TypeMirror> typeMapper = t -> typeMap.getOrDefault(t, t);
-
             String rsPath = restService.getAnnotation(Path.class).value();
-            String rsConsumes = Optional.ofNullable(restService.getAnnotation(Consumes.class))
+            String rsConsumes = ofNullable(restService.getAnnotation(Consumes.class))
                     .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
                     .orElse("*/*");
 
@@ -117,10 +101,12 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                     .addStatement("super($L, $L, $S)", "resource", "dispatcher", rsPath)
                     .build());
 
-            FluentIterable<? extends ExecutableElement> methods = from(restService.getEnclosedElements())
-                    .filter(element -> element.getKind() == ElementKind.METHOD)
-                    .filter(ExecutableElement.class)
-                    .filter(method -> !(method.getModifiers().contains(STATIC) || method.isDefault()));
+            List<ExecutableElement> methods = restService.getEnclosedElements().stream()
+                    .filter(e -> e.getKind() == ElementKind.METHOD && e instanceof ExecutableElement)
+                    .map(e -> (ExecutableElement) e)
+                    .filter(method -> !(method.getModifiers().contains(STATIC) || method.isDefault()))
+                    .collect(Collectors.toList());
+
             for (ExecutableElement method : methods) {
                 String methodName = method.getSimpleName().toString();
 
@@ -138,33 +124,45 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                     continue;
                 }
 
-                String mPath = Optional.ofNullable(method.getAnnotation(Path.class))
-                        .map(Path::value)
-                        .orElse("");
+                String methodPath = ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("");
+                String resolvedPath = Arrays.stream(methodPath.split("/")).map(subPath -> {
+                    if (subPath.startsWith("{")) {
+                        String pathParamName = subPath.substring(1, subPath.length() - 1);
+                        return method.getParameters().stream()
+                                .filter(a -> ofNullable(a.getAnnotation(PathParam.class)).map(PathParam::value)
+                                        .map(pathParamName::equals).orElse(false))
+                                .findFirst().map(a -> a.getSimpleName().toString())
+                                .orElse("\"path param '" + pathParamName + "\" does not match any param!");
+                    } else {
+                        return "\"" + subPath + "\"";
+                    }
+                }).collect(Collectors.joining(", "));
+                if (resolvedPath.equals("\"\"")) resolvedPath = "";
 
+                final String N = ""; // separator between each element
                 CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("return resource($S)$[\n", mPath);
+                builder.add("$[return resolve($L)", resolvedPath);
                 {
                     // query params
                     method.getParameters().stream()
                             .filter(p -> p.getAnnotation(QueryParam.class) != null)
-                            .forEach(p -> builder.add(".param($S, $L)\n",
+                            .forEach(p -> builder.add(".param($S, $L)" + N,
                                     p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
                             );
                     // method type
-                    builder.add(".method($S)\n", from(method.getAnnotationMirrors())
-                            .transform(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
-                            .filter(Predicates.notNull()).transform(HttpMethod::value).first().or("GET"));
+                    builder.add(".method($S)" + N, method.getAnnotationMirrors().stream()
+                            .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
+                            .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse("GET"));
                     // accept
-                    String accept = Optional.ofNullable(method.getAnnotation(Consumes.class))
+                    String accept = ofNullable(method.getAnnotation(Consumes.class))
                             .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
                             .orElse(rsConsumes);
-                    if (!accept.equals("*/*")) builder.add(".accept($S)\n", accept);
+                    if (!accept.equals("*/*")) builder.add(".accept($S)" + N, accept);
                     // data
                     method.getParameters().stream()
                             .filter(a -> a.getAnnotation(QueryParam.class) == null
                                     || a.getAnnotation(PathParam.class) == null)
-                            .findFirst().ifPresent(data -> builder.add(".data($L)\n", data.getSimpleName()));
+                            .findFirst().ifPresent(data -> builder.add(".data($L)" + N, data.getSimpleName()));
 
                 }
 
@@ -186,22 +184,6 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         return a.getAnnotationType().toString().endsWith("GwtIncompatible");
     }
 
-    private boolean isOverlay(TypeMirror T) {
-        // Void
-        TypeMirror vd = processingEnv.getElementUtils().getTypeElement(Void.class.getName()).asType();
-        // JavaScriptObject
-        TypeMirror js = processingEnv.getElementUtils().getTypeElement(JavaScriptObject.class.getName()).asType();
-        return processingEnv.getTypeUtils().isSubtype(T, js)
-                || T.getAnnotationsByType(JsType.class).length > 0
-                || processingEnv.getTypeUtils().isSameType(T, vd);
-    }
-
-    private Iterable<AnnotationSpec> transformAnnotations(List<? extends AnnotationMirror> annotationMirrors) {
-        return from(annotationMirrors)
-                .filter(input -> !isTypeOf(AutoRestGwt.class, input.getAnnotationType()))
-                .transform(AnnotationSpec::get);
-    }
-
     private void log(String msg) {
         if (processingEnv.getOptions().containsKey("debug")) {
             processingEnv.getMessager().printMessage(Kind.NOTE, msg);
@@ -214,23 +196,5 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
     private void fatalError(String msg) {
         processingEnv.getMessager().printMessage(Kind.ERROR, "FATAL ERROR: " + msg);
-    }
-
-    private TypeMirror typeMap_type(TypeMap annotation) {
-        try {
-            annotation.type();
-            throw new RuntimeException("unreachable");
-        } catch (MirroredTypeException exception) {
-            return exception.getTypeMirror();
-        }
-    }
-
-    private TypeMirror typeMap_with(TypeMap annotation) {
-        try {
-            annotation.with();
-            throw new RuntimeException("unreachable");
-        } catch (MirroredTypeException exception) {
-            return exception.getTypeMirror();
-        }
     }
 }

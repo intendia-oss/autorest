@@ -20,11 +20,20 @@ public class GreetingServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        log.info("Sending 'Hello World'...");
+        String uri = req.getRequestURI();
+        log.info("Sending 'Hello World' in response of " + uri);
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode helloJsonNode = mapper.readTree(helloWorldJson);
-            mapper.writeValue(resp.getOutputStream(), helloJsonNode);
+            String FOO_URI = "/example/api/observable/foo";
+            if (uri.equals(FOO_URI)) {
+                resp.getWriter().write("[{\"greeting\":\"/foo\"}]");
+            } else if (uri.startsWith(FOO_URI)) {
+                String x = uri.substring(FOO_URI.length()) + "?" + req.getQueryString();
+                resp.getWriter().write("[{\"greeting\":\"/foo" + x + "\"}]");
+            } else {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode helloJsonNode = mapper.readTree(helloWorldJson);
+                mapper.writeValue(resp.getOutputStream(), helloJsonNode);
+            }
         } catch (Throwable e) {
             log.log(Level.SEVERE, "error sending 'Hello World'", e);
         }
@@ -32,7 +41,8 @@ public class GreetingServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        log.info("Creating custom greeting.");
+        String uri = req.getRequestURI();
+        log.info("Creating custom greeting in response of " + uri);
         try {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode nameObject = mapper.readValue(req.getInputStream(), ObjectNode.class);

@@ -9,7 +9,7 @@
 
     <servlet-mapping>
         <servlet-name>greeting-service</servlet-name>
-        <url-pattern>/example/greeting-service</url-pattern>
+        <url-pattern>/example/api/*</url-pattern>
     </servlet-mapping>
 
     <welcome-file-list>

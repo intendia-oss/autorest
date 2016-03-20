@@ -2,9 +2,9 @@ package com.intendia.gwt.autorest.example.client;
 
 import com.google.gwt.core.client.JavaScriptObject;
 
-public class Overlay extends JavaScriptObject implements Interface {
+public class OverlayGreeting extends JavaScriptObject implements Greeting {
 
-    protected Overlay() {
+    protected OverlayGreeting() {
     }
 
     public final native String getGreeting() /*-{

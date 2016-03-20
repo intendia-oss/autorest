@@ -9,11 +9,15 @@ public class RestServiceProxy {
         this.dispatcher = dispatcher;
     }
 
-    public Resource resource(String path) {
-        return resource.resolve(path);
+    protected Resource resolve(Object... path) {
+        Resource resolve = resource.resolve(""); // ensure new copy
+        for (Object subPath : path) {
+            resolve = resolve.resolve(subPath);
+        }
+        return resolve;
     }
 
-    public Dispatcher dispatcher() {
+    protected Dispatcher dispatcher() {
         return dispatcher;
     }
 }

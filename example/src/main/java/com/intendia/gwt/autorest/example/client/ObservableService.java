@@ -6,22 +6,26 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import rx.Observable;
 
 @AutoRestGwt
-@Path("greeting-service")
+@Path("observable")
 public interface ObservableService {
 
     @PUT Observable<Void> ping();
 
-    @GET Observable<Overlay> overlay();
+    @GET Observable<Greeting> get();
 
-    @POST Observable<Overlay> overlay(Overlay name);
+    @POST Observable<Greeting> post(Greeting name);
 
-    @GET Observable<Interface> iface();
+    @Path("foo")
+    @GET Observable<Greeting> getFoo();
 
-    @POST Observable<Interface> iface(Interface name);
+    @Path("foo/{foo}")
+    @GET Observable<Greeting> getFoo(@PathParam("foo") String foo, @QueryParam("bar") String bar);
 
     @com.google.gwt.core.shared.GwtIncompatible Response gwtIncompatible();
 
@@ -29,9 +33,9 @@ public interface ObservableService {
 
     class Factory {
         public static ObservableService create(Resource parent) {
-            return new ObservableService_RestServiceProxy(parent, (method, builder) -> {
-                builder.setHeader("mode", "observable");
-                return builder.send();
+            return new ObservableService_RestServiceProxy(parent, rb -> {
+                rb.setHeader("mode", "observable");
+                return rb.send();
             });
         }
     }

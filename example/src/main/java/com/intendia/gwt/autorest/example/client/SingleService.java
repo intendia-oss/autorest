@@ -10,18 +10,14 @@ import javax.ws.rs.core.Response;
 import rx.Single;
 
 @AutoRestGwt
-@Path("greeting-service")
+@Path("single")
 public interface SingleService {
 
     @PUT Single<Void> ping();
 
-    @GET Single<Overlay> overlay();
+    @GET Single<Greeting> get();
 
-    @POST Single<Overlay> overlay(Overlay name);
-
-    @GET Single<Interface> iface();
-
-    @POST Single<Interface> iface(Interface name);
+    @POST Single<Greeting> put(Greeting name);
 
     @com.google.gwt.core.shared.GwtIncompatible Response gwtIncompatible();
 
@@ -29,9 +25,9 @@ public interface SingleService {
 
     class Factory {
         public static SingleService create(Resource parent) {
-            return new SingleService_RestServiceProxy(parent, (method, builder) -> {
-                builder.setHeader("mode", "single");
-                return builder.send();
+            return new SingleService_RestServiceProxy(parent, rb -> {
+                rb.setHeader("mode", "single");
+                return rb.send();
             });
         }
     }

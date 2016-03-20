@@ -1,6 +1,9 @@
 package com.intendia.gwt.autorest.client;
 
 import static com.google.gwt.core.client.GWT.getHostPageBaseURL;
+import static com.intendia.gwt.autorest.client.Resource.CONTENT_TYPE_JSON;
+import static com.intendia.gwt.autorest.client.Resource.HEADER_ACCEPT;
+import static com.intendia.gwt.autorest.client.Resource.HEADER_CONTENT_TYPE;
 import static java.util.Collections.singleton;
 
 import com.google.gwt.http.client.Request;
@@ -8,8 +11,9 @@ import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.Response;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,35 +30,34 @@ public class Method {
     private static final Logger log = Logger.getLogger(Method.class.getName());
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = Arrays.asList(200, 201, 204, 1223/*MSIE*/);
 
-    static class MyRequestBuilder extends RequestBuilder {
-        protected MyRequestBuilder(String httpMethod, String url) {
+    private static class MyRequestBuilder extends RequestBuilder {
+        MyRequestBuilder(String httpMethod, String url) {
             super(httpMethod, url);
         }
     }
 
-    public final RequestBuilder builder;
+    private final String uri;
+    private final String method;
+    private final Map<String, String> headers = new LinkedHashMap<>();
     private Func1<Integer, Boolean> expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
+    private Object data = null;
 
-    public Method(Resource resource, String method) {
-        builder = new MyRequestBuilder(method, resource.getUri());
-        builder.setRequestData(null); // just in case
-        for (Entry<String, String> e : resource.getHeaders().entrySet()) {
-            header(e.getKey(), e.getValue());
-        }
+    public Method(String uri, String method) {
+        this.uri = uri;
+        this.method = method;
     }
 
     public Method header(String header, String value) {
-        builder.setHeader(header, value);
+        headers.put(header, value);
         return this;
     }
 
     public Method accept(String value) {
-        return header(Resource.HEADER_ACCEPT, value);
+        return header(HEADER_ACCEPT, value);
     }
 
     public Method data(Object data) {
-        defaultContentType(Resource.CONTENT_TYPE_JSON);
-        builder.setRequestData(stringify(data));
+        this.data = data;
         return this;
     }
 
@@ -70,64 +73,57 @@ public class Method {
     }
 
     public <T> Observable<T> observe(Dispatcher d) {
-        defaultAcceptType(Resource.CONTENT_TYPE_JSON);
-        return Observable.<T[]>create(s -> new LiveRequest(s, d))
+        return Observable.<T[]>create(s -> createRequest(d, s))
                 .flatMapIterable(o -> o == null ? singleton(null) : Method.asJavaList(o));
     }
 
     public <T> Single<T> single(Dispatcher d) {
-        defaultAcceptType(Resource.CONTENT_TYPE_JSON);
-        return Observable.<T>create(s -> new LiveRequest(s, d)).toSingle();
+        return Observable.<T>create(s -> createRequest(d, s)).toSingle();
     }
 
-    /**
-     * Local file-system (file://) does not return any status codes. Therefore - if we read from the file-system we
-     * accept all codes. This is for instance relevant when developing a PhoneGap application.
-     */
-    boolean isExpected(int status) {
-        return isRequestGoingToFileSystem(getHostPageBaseURL(), builder.getUrl()) || expectedStatuses.call(status);
-    }
+    private <T> MethodRequest createRequest(Dispatcher d, Subscriber<T> s) {
+        MyRequestBuilder rb = new MyRequestBuilder(method, uri);
 
-    static boolean isRequestGoingToFileSystem(String baseUrl, String requestUrl) {
-        return requestUrl.startsWith("file") ||
-                (baseUrl.startsWith("file") && (requestUrl.startsWith("/") || requestUrl.startsWith(".")));
-    }
+        rb.setRequestData(data == null ? null : stringify(data));
+        for (Entry<String, String> h : headers.entrySet()) rb.setHeader(h.getKey(), h.getValue());
+        if (!headers.containsKey(HEADER_CONTENT_TYPE)) rb.setHeader(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON);
+        if (!headers.containsKey(HEADER_ACCEPT)) rb.setHeader(HEADER_ACCEPT, CONTENT_TYPE_JSON);
 
-    void defaultContentType(String type) {
-        if (builder.getHeader(Resource.HEADER_CONTENT_TYPE) == null) header(Resource.HEADER_CONTENT_TYPE, type);
-    }
-
-    void defaultAcceptType(String type) {
-        if (builder.getHeader(Resource.HEADER_ACCEPT) == null) header(Resource.HEADER_ACCEPT, type);
+        return new MethodRequest(s, d, rb, expectedStatuses);
     }
 
     @Override
     public String toString() {
-        return builder.getHTTPMethod() + " " + builder.getUrl();
+        return method + " " + uri;
     }
 
-    class LiveRequest {
+    private static class MethodRequest {
+        private final String url;
+        private final Func1<Integer, Boolean> expectedStatuses;
         public @Nullable Response response;
         public @Nullable Request request;
-        public <T> LiveRequest(Subscriber<T> s, Dispatcher d) {
+
+        public <T> MethodRequest(Subscriber<T> s, Dispatcher d, MyRequestBuilder rb,
+                Func1<Integer, Boolean> expectedStatuses) {
+            this.expectedStatuses = expectedStatuses;
+            url = rb.getUrl();
             SingleDelayedProducer<T> producer = new SingleDelayedProducer<>(s);
             try {
-                builder.setCallback(new RequestCallback() {
-                    Method method = Method.this;
+                rb.setCallback(new RequestCallback() {
 
                     @Override public void onError(Request request, Throwable exception) {
                         s.onError(exception);
                     }
 
                     @Override public void onResponseReceived(Request request, @Nullable Response response) {
-                        LiveRequest.this.response = response;
+                        MethodRequest.this.response = response;
                         if (response == null) {
                             s.onError(new FailedStatusCodeException("TIMEOUT", 999));
-                        } else if (!method.isExpected(response.getStatusCode())) {
+                        } else if (!isExpected(response.getStatusCode())) {
                             s.onError(new FailedResponseException(response.getStatusText(), response.getStatusCode()));
                         } else {
                             try {
-                                log.fine("Received http response for request: " + method.toString());
+                                log.fine("Received http response for request: " + rb.getUrl());
                                 String text = response.getText();
                                 if (text == null || text.isEmpty()) {
                                     producer.setValue(null);
@@ -142,12 +138,27 @@ public class Method {
                     }
                 });
                 s.setProducer(producer);
-                s.add(Subscriptions.create(() -> { if (request != null) request.cancel(); }));
-                request = d.send(Method.this, builder);
+                s.add(Subscriptions.create(() -> {
+                    if (request != null) request.cancel();
+                }));
+                request = d.send(rb);
             } catch (Throwable e) {
-                log.log(Level.FINE, "Received http error for: " + Method.this.toString(), e);
+                log.log(Level.FINE, "Received http error for: " + rb.getUrl(), e);
                 s.onError(new RequestResponseException(e));
             }
+        }
+
+        /**
+         * Local file-system (file://) does not return any status codes. Therefore - if we read from the file-system we
+         * accept all codes. This is for instance relevant when developing a PhoneGap application.
+         */
+        private boolean isExpected(int status) {
+            return isRequestGoingToFileSystem(getHostPageBaseURL(), url) || expectedStatuses.call(status);
+        }
+
+        private static boolean isRequestGoingToFileSystem(String baseUrl, String requestUrl) {
+            return requestUrl.startsWith("file") ||
+                    (baseUrl.startsWith("file") && (requestUrl.startsWith("/") || requestUrl.startsWith(".")));
         }
 
         public class RequestResponseException extends RuntimeException {
@@ -155,7 +166,6 @@ public class Method {
             public RequestResponseException(String message) { super(message); }
             public RequestResponseException(String message, Throwable cause) { super(message, cause); }
             public RequestResponseException(Throwable cause) { super(cause); }
-            public Method getMethod() { return Method.this; }
             public @Nullable Request getRequest() { return request; }
             public @Nullable Response getResponse() { return response; }
         }
