@@ -125,7 +125,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 }
 
                 String methodPath = ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("");
-                String resolvedPath = Arrays.stream(methodPath.split("/")).map(subPath -> {
+                String resolvedPath = Arrays.stream(methodPath.split("/")).filter(s -> !s.isEmpty()).map(subPath -> {
                     if (subPath.startsWith("{")) {
                         String pathParamName = subPath.substring(1, subPath.length() - 1);
                         return method.getParameters().stream()
@@ -137,7 +137,6 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         return "\"" + subPath + "\"";
                     }
                 }).collect(Collectors.joining(", "));
-                if (resolvedPath.equals("\"\"")) resolvedPath = "";
 
                 final String N = ""; // separator between each element
                 CodeBlock.Builder builder = CodeBlock.builder();
