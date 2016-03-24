@@ -33,9 +33,14 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.CookieParam;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.HttpMethod;
+import javax.ws.rs.MatrixParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
@@ -158,11 +163,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                             .orElse(rsConsumes);
                     if (!accept.equals("*/*")) builder.add(".accept($S)" + N, accept);
                     // data
-                    method.getParameters().stream()
-                            .filter(a -> a.getAnnotation(QueryParam.class) == null
-                                    || a.getAnnotation(PathParam.class) == null)
-                            .findFirst().ifPresent(data -> builder.add(".data($L)" + N, data.getSimpleName()));
-
+                    method.getParameters().stream().filter(this::isParam).findFirst()
+                            .ifPresent(data -> builder.add(".data($L)" + N, data.getSimpleName()));
                 }
 
                 builder.add("." + (isObservable ? "observe" : "single") + "(dispatcher());\n$]");
@@ -173,6 +175,15 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
             Filer filer = processingEnv.getFiler();
             JavaFile.builder(serviceName.packageName(), adapterBuilder.build()).build().writeTo(filer);
         }
+    }
+
+    public boolean isParam(VariableElement a) {
+        return a.getAnnotation(CookieParam.class) == null
+                && a.getAnnotation(FormParam.class) == null
+                && a.getAnnotation(HeaderParam.class) == null
+                && a.getAnnotation(MatrixParam.class) == null
+                && a.getAnnotation(PathParam.class) == null
+                && a.getAnnotation(QueryParam.class) == null;
     }
 
     private boolean isIncompatible(ExecutableElement method) {

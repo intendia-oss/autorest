@@ -28,7 +28,7 @@ public class ExampleEntryPoint implements EntryPoint {
         sService.ping().subscribe(n -> append("single pong"), err);
 
         oService.getFoo().subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
-        oService.getFoo("FOO", "BAR").subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
+        oService.getFoo("FOO", "BAR", null).subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
     }
 
     private void getCustomGreeting(ObservableService service, String name) {

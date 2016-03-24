@@ -25,7 +25,10 @@ public interface ObservableService {
     @GET Observable<Greeting> getFoo();
 
     @Path("foo/{foo}")
-    @GET Observable<Greeting> getFoo(@PathParam("foo") String foo, @QueryParam("bar") String bar);
+    @GET Observable<Greeting> getFoo(
+            @PathParam("foo") String foo,
+            @QueryParam("bar") String bar,
+            @QueryParam("unk") String oth);
 
     @com.google.gwt.core.shared.GwtIncompatible Response gwtIncompatible();
 
