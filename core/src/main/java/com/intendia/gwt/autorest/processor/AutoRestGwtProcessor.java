@@ -125,7 +125,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 boolean isObservable = isTypeOf(Observable.class, method.getReturnType());
                 boolean isSingle = isTypeOf(Single.class, method.getReturnType());
                 if (!isObservable && !isSingle) {
-                    error("Observable<T> return type required", method, annotation);
+                    error("rx return type required (Observable or Single)", method, annotation);
                     continue;
                 }
 
