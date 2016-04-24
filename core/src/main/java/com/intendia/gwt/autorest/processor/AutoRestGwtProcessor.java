@@ -137,7 +137,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                                 .filter(a -> ofNullable(a.getAnnotation(PathParam.class)).map(PathParam::value)
                                         .map(pathParamName::equals).orElse(false))
                                 .findFirst().map(a -> a.getSimpleName().toString())
-                                .orElse("\"path param '" + pathParamName + "\" does not match any param!");
+                                .orElse("null /* path param '" + pathParamName + "' does not match any argument! */");
                     } else {
                         return "\"" + subPath + "\"";
                     }
