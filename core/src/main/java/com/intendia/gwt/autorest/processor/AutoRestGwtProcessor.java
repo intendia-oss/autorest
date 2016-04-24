@@ -7,6 +7,12 @@ import static java.util.Collections.singleton;
 import static java.util.Optional.ofNullable;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
+import static javax.ws.rs.HttpMethod.DELETE;
+import static javax.ws.rs.HttpMethod.GET;
+import static javax.ws.rs.HttpMethod.HEAD;
+import static javax.ws.rs.HttpMethod.OPTIONS;
+import static javax.ws.rs.HttpMethod.POST;
+import static javax.ws.rs.HttpMethod.PUT;
 
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
@@ -20,9 +26,11 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
@@ -48,6 +56,7 @@ import rx.Observable;
 import rx.Single;
 
 public class AutoRestGwtProcessor extends AbstractProcessor {
+    private Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(Collectors.toSet());
     private Set<? extends TypeElement> annotations;
     private RoundEnvironment roundEnv;
 
@@ -112,6 +121,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                     .filter(method -> !(method.getModifiers().contains(STATIC) || method.isDefault()))
                     .collect(Collectors.toList());
 
+            Set<String> methodImports = new HashSet<>();
             for (ExecutableElement method : methods) {
                 String methodName = method.getSimpleName().toString();
 
@@ -154,9 +164,9 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                                     p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
                             );
                     // method type
-                    builder.add(".method($S)" + N, method.getAnnotationMirrors().stream()
+                    builder.add(".method($L)" + N, methodImport(methodImports, method.getAnnotationMirrors().stream()
                             .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
-                            .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse("GET"));
+                            .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
                     // accept
                     String accept = ofNullable(method.getAnnotation(Consumes.class))
                             .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
@@ -173,7 +183,17 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
             }
 
             Filer filer = processingEnv.getFiler();
-            JavaFile.builder(serviceName.packageName(), adapterBuilder.build()).build().writeTo(filer);
+            JavaFile.Builder file = JavaFile.builder(serviceName.packageName(), adapterBuilder.build());
+            for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
+            file.build().writeTo(filer);
+        }
+    }
+
+    private String methodImport(Set<String> methodImports, String method) {
+        if (HTTP_METHODS.contains(method)) {
+            methodImports.add(method); return method;
+        } else {
+            return "\"" + method + "\"";
         }
     }
 
