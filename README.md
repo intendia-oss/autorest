@@ -105,7 +105,7 @@ logic is the ``com.google.gwt.http.client.RequestBuilder`` to ``rx.Producer``cod
 
 
 
- [dl]: https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.intendia.gwt%22%20AND%20a%3A%22autorest-gwt%22
+ [dl]: https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.intendia.gwt.autorest%22%20AND%20a%3A%22autorest-gwt%22
  [snap]: https://oss.sonatype.org/content/repositories/snapshots/
  [jackson]: https://gist.github.com/ibaca/71be7c73d8619d11182807b871c5975c
  [rxjava]: https://github.com/ReactiveX/RxJava
