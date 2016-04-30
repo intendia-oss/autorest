@@ -86,6 +86,7 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <version>2.1</version>
                 <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
                     <mavenExecutorId>forked-path</mavenExecutorId>
                     <useReleaseProfile>false</useReleaseProfile>
                 </configuration>
