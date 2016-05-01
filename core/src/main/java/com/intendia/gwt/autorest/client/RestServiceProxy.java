@@ -1,23 +1,13 @@
 package com.intendia.gwt.autorest.client;
 
 public class RestServiceProxy {
-    private final Resource resource;
-    private final Dispatcher dispatcher;
+    private final ResourceBuilder resource;
 
-    public RestServiceProxy(Resource resource, Dispatcher dispatcher, String path) {
-        this.resource = resource.resolve(path);
-        this.dispatcher = dispatcher;
+    public RestServiceProxy(ResourceBuilder resource, String path) {
+        this.resource = resource.copy().path(path);
     }
 
-    protected Resource resolve(Object... path) {
-        Resource resolve = resource.resolve(""); // ensure new copy
-        for (Object subPath : path) {
-            resolve = resolve.resolve(subPath);
-        }
-        return resolve;
-    }
-
-    protected Dispatcher dispatcher() {
-        return dispatcher;
+    protected ResourceBuilder resolve(String... paths) {
+        return resource.copy().path(paths);
     }
 }

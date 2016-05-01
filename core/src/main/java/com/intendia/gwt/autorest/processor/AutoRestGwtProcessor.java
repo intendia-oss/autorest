@@ -16,8 +16,7 @@ import static javax.ws.rs.HttpMethod.PUT;
 
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.Dispatcher;
-import com.intendia.gwt.autorest.client.Resource;
+import com.intendia.gwt.autorest.client.ResourceBuilder;
 import com.intendia.gwt.autorest.client.RestServiceProxy;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -110,9 +109,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
             adapterBuilder.addMethod(MethodSpec.constructorBuilder()
                     .addModifiers(PUBLIC)
-                    .addParameter(Resource.class, "resource")
-                    .addParameter(Dispatcher.class, "dispatcher")
-                    .addStatement("super($L, $L, $S)", "resource", "dispatcher", rsPath)
+                    .addParameter(ResourceBuilder.class, "resource")
+                    .addStatement("super($L, $S)", "resource", rsPath)
                     .build());
 
             List<ExecutableElement> methods = restService.getEnclosedElements().stream()
@@ -177,7 +175,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                             .ifPresent(data -> builder.add(".data($L)" + N, data.getSimpleName()));
                 }
 
-                builder.add("." + (isObservable ? "observe" : "single") + "(dispatcher());\n$]");
+                builder.add("." + (isObservable ? "observe" : "single") + "();\n$]");
                 adapterBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
 
             }

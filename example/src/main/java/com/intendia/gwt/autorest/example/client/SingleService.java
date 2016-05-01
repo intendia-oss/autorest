@@ -1,7 +1,7 @@
 package com.intendia.gwt.autorest.example.client;
 
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.Resource;
+import com.intendia.gwt.autorest.client.ResourceBuilder;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -24,11 +24,8 @@ public interface SingleService {
     @com.google.common.annotations.GwtIncompatible("serverOnly") Response guavaIncompatible();
 
     class Factory {
-        public static SingleService create(Resource parent) {
-            return new SingleService_RestServiceProxy(parent, rb -> {
-                rb.setHeader("mode", "single");
-                return rb.send();
-            });
+        public static SingleService create(ResourceBuilder parent) {
+            return new SingleService_RestServiceProxy(parent.copy().header("mode","single"));
         }
     }
 }
