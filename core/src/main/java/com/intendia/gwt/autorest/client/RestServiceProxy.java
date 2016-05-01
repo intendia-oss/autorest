@@ -4,10 +4,10 @@ public class RestServiceProxy {
     private final ResourceBuilder resource;
 
     public RestServiceProxy(ResourceBuilder resource, String path) {
-        this.resource = resource.copy().path(path);
+        this.resource = resource.nest().path(path);
     }
 
-    protected ResourceBuilder resolve(String... paths) {
-        return resource.copy().path(paths);
+    protected ResourceBuilder resolve(Object... paths) {
+        return resource.nest().path(paths);
     }
 }

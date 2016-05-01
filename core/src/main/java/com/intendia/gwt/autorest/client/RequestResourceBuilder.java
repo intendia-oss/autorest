@@ -1,10 +1,8 @@
 package com.intendia.gwt.autorest.client;
 
 import static com.google.gwt.core.client.GWT.getHostPageBaseURL;
-import static com.google.gwt.http.client.URL.encodeQueryString;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static java.util.Objects.requireNonNull;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -14,101 +12,47 @@ import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
-import java.util.ArrayList;
+import com.google.gwt.http.client.URL;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
-import javax.ws.rs.HttpMethod;
 import jsinterop.annotations.JsMethod;
 import rx.Observable;
 import rx.Single;
 import rx.Subscriber;
+import rx.annotations.Experimental;
 import rx.functions.Func1;
 import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
-public class RequestResourceBuilder implements ResourceBuilder {
+@Experimental
+public class RequestResourceBuilder extends CollectorResourceBuilder {
     private static final Logger log = Logger.getLogger(RequestResourceBuilder.class.getName());
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
     private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
-    private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
-
-    private List<String> paths;
-    private List<String> params;
-    private String method;
-    private Map<String, String> headers;
-    private Object data;
 
     private Func1<Integer, Boolean> expectedStatuses;
     private Func1<RequestBuilder, Request> dispatcher;
 
     public RequestResourceBuilder() {
-        this.paths = new ArrayList<>(singleton(".")); // so new Resource().path('/foo') results './foo' and not '/foo'
-        this.params = new ArrayList<>();
-        this.method = HttpMethod.GET;
-        this.headers = new TreeMap<>();
-        this.data = null;
-
+        super();
         this.expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
         this.dispatcher = DEFAULT_DISPATCHER;
     }
 
     private RequestResourceBuilder(RequestResourceBuilder resource) {
-        this.paths = resource.paths;
-        this.params = resource.params;
-        this.method = resource.method;
-        this.headers = resource.headers;
-        this.data = resource.data;
-
+        super(resource);
         this.expectedStatuses = resource.expectedStatuses;
         this.dispatcher = resource.dispatcher;
     }
 
-    @Override public ResourceBuilder copy() {
-        return new RequestResourceBuilder(this);
-    }
-
-    @Override public ResourceBuilder path(String... paths) {
-        for (String path : paths) path(path);
-        return this;
-    }
-
-    public ResourceBuilder path(String path) {
-        if (path.endsWith("/")) path = path.substring(0, path.length() - 1); // strip off trailing slash
-        if (path.matches(ABSOLUTE_PATH)) this.paths = new ArrayList<>(singleton(path)); // reset current path
-        else this.paths.add(path.startsWith("/") ? path : "/" + path);
-        return this;
-    }
-
-    @Override public ResourceBuilder param(String key, @Nullable Object value) {
-        if (value instanceof Iterable<?>) for (Object v : ((Iterable<?>) value)) param(key, v);
-        else if (value != null) params.add(encodeQueryString(key) + "=" + encodeQueryString(Objects.toString(value)));
-        return this;
-    }
-
-    @Override public ResourceBuilder method(String method) {
-        this.method = method;
-        return this;
-    }
-
-    @Override public ResourceBuilder header(String key, String value) {
-        headers.put(requireNonNull(key, "header key required"), requireNonNull(value, "header value required"));
-        return this;
-    }
-
-    @Override public ResourceBuilder data(Object data) {
-        this.data = data;
-        return this;
-    }
-
     @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
+        if (RequestBuilder.class.equals(type))  return (T) new RequestResourceBuilder(this);
         if (type.equals(Single.class)) return (T) single();
-        else if (type.equals(Observable.class)) return (T) observe();
-        else throw new UnsupportedOperationException("unsupported type " + type);
+        if (type.equals(Observable.class)) return (T) observe();
+        throw new UnsupportedOperationException("unsupported type " + type);
     }
 
     public <T> Observable<T> observe() {
@@ -120,18 +64,6 @@ public class RequestResourceBuilder implements ResourceBuilder {
     public <T> Single<T> single() {
         //noinspection Convert2MethodRef
         return Observable.<T>create((s) -> createRequest(s)).toSingle();
-    }
-
-    private String query() {
-        String query = "";
-        for (String param : params) query += (query.isEmpty() ? "" : "&") + param;
-        return query.isEmpty() ? "" : "?" + query;
-    }
-
-    private String uri() {
-        String uri = "";
-        for (String path : paths) uri += path;
-        return uri + query();
     }
 
     private <T> MethodRequest createRequest(Subscriber<T> s) {
@@ -159,11 +91,6 @@ public class RequestResourceBuilder implements ResourceBuilder {
         if (statuses.length == 1 && statuses[0] < 0) expectedStatuses = status -> true;
         else expectedStatuses = asList(statuses)::contains;
         return this;
-    }
-
-    @Override
-    public String toString() {
-        return method + " " + uri();
     }
 
     private static class MethodRequest {
@@ -264,7 +191,7 @@ public class RequestResourceBuilder implements ResourceBuilder {
     private static native <T> T stringify(Object value);
 
     private static class MyRequestBuilder extends RequestBuilder {
-        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, url); }
+        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, URL.encode(url)); }
     }
 
     private static class MyDispatcher implements Func1<RequestBuilder, Request> {

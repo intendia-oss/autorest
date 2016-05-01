@@ -25,7 +25,7 @@ public interface SingleService {
 
     class Factory {
         public static SingleService create(ResourceBuilder parent) {
-            return new SingleService_RestServiceProxy(parent.copy().header("mode","single"));
+            return new SingleService_RestServiceProxy(parent.nest().header("mode","single"));
         }
     }
 }

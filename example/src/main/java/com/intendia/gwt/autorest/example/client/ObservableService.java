@@ -36,7 +36,7 @@ public interface ObservableService {
 
     class Factory {
         public static ObservableService create(ResourceBuilder parent) {
-            return new ObservableService_RestServiceProxy(parent.copy().header("mode", "observable"));
+            return new ObservableService_RestServiceProxy(parent.nest().header("mode", "observable"));
         }
     }
 }
