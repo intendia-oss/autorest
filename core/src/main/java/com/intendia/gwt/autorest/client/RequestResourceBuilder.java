@@ -105,13 +105,19 @@ public class RequestResourceBuilder implements ResourceBuilder {
         return this;
     }
 
-    @Override public <T> Observable<T> observe() {
+    @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
+        if (type.equals(Single.class)) return (T) single();
+        else if (type.equals(Observable.class)) return (T) observe();
+        else throw new UnsupportedOperationException("unsupported type " + type);
+    }
+
+    public <T> Observable<T> observe() {
         //noinspection Convert2MethodRef
         return Observable.<T[]>create((s) -> createRequest(s))
                 .flatMapIterable(o -> o == null ? singleton(null) : asList(o));
     }
 
-    @Override public <T> Single<T> single() {
+    public <T> Single<T> single() {
         //noinspection Convert2MethodRef
         return Observable.<T>create((s) -> createRequest(s)).toSingle();
     }

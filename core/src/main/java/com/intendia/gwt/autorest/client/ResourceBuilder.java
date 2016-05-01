@@ -1,8 +1,6 @@
 package com.intendia.gwt.autorest.client;
 
 import javax.annotation.Nullable;
-import rx.Observable;
-import rx.Single;
 
 public interface ResourceBuilder {
 
@@ -18,8 +16,6 @@ public interface ResourceBuilder {
 
     ResourceBuilder data(Object data);
 
-    <T> Observable<T> observe();
-
-    <T> Single<T> single();
+    <T> T build(Class<? super T> type);
 
 }

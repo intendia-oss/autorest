@@ -2,7 +2,6 @@ package com.intendia.gwt.autorest.processor;
 
 import static com.google.auto.common.MoreElements.getAnnotationMirror;
 import static com.google.auto.common.MoreTypes.asElement;
-import static com.google.auto.common.MoreTypes.isTypeOf;
 import static java.util.Collections.singleton;
 import static java.util.Optional.ofNullable;
 import static javax.lang.model.element.Modifier.PUBLIC;
@@ -51,8 +50,6 @@ import javax.ws.rs.MatrixParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
-import rx.Observable;
-import rx.Single;
 
 public class AutoRestGwtProcessor extends AbstractProcessor {
     private Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(Collectors.toSet());
@@ -130,13 +127,6 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                     continue;
                 }
 
-                boolean isObservable = isTypeOf(Observable.class, method.getReturnType());
-                boolean isSingle = isTypeOf(Single.class, method.getReturnType());
-                if (!isObservable && !isSingle) {
-                    error("rx return type required (Observable or Single)", method, annotation);
-                    continue;
-                }
-
                 String methodPath = ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("");
                 String resolvedPath = Arrays.stream(methodPath.split("/")).filter(s -> !s.isEmpty()).map(subPath -> {
                     if (subPath.startsWith("{")) {
@@ -175,7 +165,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                             .ifPresent(data -> builder.add(".data($L)" + N, data.getSimpleName()));
                 }
 
-                builder.add("." + (isObservable ? "observe" : "single") + "();\n$]");
+                builder.add(".build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
                 adapterBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
 
             }
