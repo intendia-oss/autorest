@@ -1,6 +1,5 @@
 package com.intendia.gwt.autorest.processor;
 
-import static com.google.auto.common.MoreElements.getAnnotationMirror;
 import static com.google.auto.common.MoreTypes.asElement;
 import static java.util.Collections.singleton;
 import static java.util.Optional.ofNullable;
@@ -34,7 +33,6 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -53,8 +51,8 @@ import javax.ws.rs.QueryParam;
 
 public class AutoRestGwtProcessor extends AbstractProcessor {
     private Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(Collectors.toSet());
-    private Set<? extends TypeElement> annotations;
-    private RoundEnvironment roundEnv;
+
+    @Override public Set<String> getSupportedOptions() { return singleton("debug"); }
 
     @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt.class.getName()); }
 
@@ -62,119 +60,108 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
     @Override public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) return false;
-
-        this.annotations = annotations;
-        this.roundEnv = roundEnv;
-        try {
-            processAnnotations();
-        } catch (Exception e) {
-            // We don't allow exceptions of any kind to propagate to the compiler
-            fatalError(Throwables.getStackTraceAsString(e));
-        }
+        roundEnv.getElementsAnnotatedWith(AutoRestGwt.class).stream()
+                .filter(e -> e.getKind().isInterface() && e instanceof TypeElement).map(e -> (TypeElement) e)
+                .forEach(restService -> {
+                    try {
+                        processRestService(restService);
+                    } catch (Exception e) {
+                        // We don't allow exceptions of any kind to propagate to the compiler
+                        error("uncaught exception processing rest service " + restService + ": " + e + "\n"
+                                + Throwables.getStackTraceAsString(e));
+                    }
+                });
         return true;
     }
 
-    private void processAnnotations() throws Exception {
-        List<TypeElement> elements = roundEnv.getElementsAnnotatedWith(AutoRestGwt.class).stream()
-                .filter(e -> e.getKind().isInterface() && e instanceof TypeElement)
-                .map(e -> (TypeElement) e).collect(Collectors.toList());
+    private void processRestService(TypeElement restService) throws Exception {
+        String rsPath = restService.getAnnotation(Path.class).value();
+        String rsConsumes = ofNullable(restService.getAnnotation(Consumes.class))
+                .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
+                .orElse("*/*");
 
-        log(annotations.toString());
-        log(elements.toString());
+        ClassName rsName = ClassName.get(restService);
+        log("rest service interface: " + rsName);
 
-        for (TypeElement restService : elements) {
-            //noinspection OptionalGetWithoutIsPresent
-            AnnotationMirror annotation = getAnnotationMirror(restService, AutoRestGwt.class).get();
+        ClassName proxyName = ClassName
+                .get(rsName.packageName(), rsName.simpleName() + "_RestServiceProxy");
+        log("rest service proxy: " + proxyName);
 
-            String rsPath = restService.getAnnotation(Path.class).value();
-            String rsConsumes = ofNullable(restService.getAnnotation(Consumes.class))
-                    .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
-                    .orElse("*/*");
+        TypeSpec.Builder proxyTypeBuilder = TypeSpec.classBuilder(proxyName.simpleName())
+                .addOriginatingElement(restService)
+                .addModifiers(Modifier.PUBLIC)
+                .superclass(RestServiceProxy.class)
+                .addSuperinterface(TypeName.get(restService.asType()));
 
-            ClassName serviceName = ClassName.get(restService);
-            log("rest service interface: " + serviceName);
+        proxyTypeBuilder.addMethod(MethodSpec.constructorBuilder()
+                .addModifiers(PUBLIC)
+                .addParameter(ResourceBuilder.class, "resource")
+                .addStatement("super($L, $S)", "resource", rsPath)
+                .build());
 
-            ClassName adapterName = ClassName
-                    .get(serviceName.packageName(), serviceName.simpleName() + "_RestServiceProxy");
-            log("rest service proxy: " + adapterName);
+        List<ExecutableElement> methods = restService.getEnclosedElements().stream()
+                .filter(e -> e.getKind() == ElementKind.METHOD && e instanceof ExecutableElement)
+                .map(e -> (ExecutableElement) e)
+                .filter(method -> !(method.getModifiers().contains(STATIC) || method.isDefault()))
+                .collect(Collectors.toList());
 
-            TypeSpec.Builder adapterBuilder = TypeSpec.classBuilder(adapterName.simpleName())
-                    .addOriginatingElement(restService)
-                    .addModifiers(Modifier.PUBLIC)
-                    .superclass(RestServiceProxy.class)
-                    .addSuperinterface(TypeName.get(restService.asType()));
+        Set<String> methodImports = new HashSet<>();
+        for (ExecutableElement method : methods) {
+            String methodName = method.getSimpleName().toString();
 
-            adapterBuilder.addMethod(MethodSpec.constructorBuilder()
-                    .addModifiers(PUBLIC)
-                    .addParameter(ResourceBuilder.class, "resource")
-                    .addStatement("super($L, $S)", "resource", rsPath)
-                    .build());
-
-            List<ExecutableElement> methods = restService.getEnclosedElements().stream()
-                    .filter(e -> e.getKind() == ElementKind.METHOD && e instanceof ExecutableElement)
-                    .map(e -> (ExecutableElement) e)
-                    .filter(method -> !(method.getModifiers().contains(STATIC) || method.isDefault()))
-                    .collect(Collectors.toList());
-
-            Set<String> methodImports = new HashSet<>();
-            for (ExecutableElement method : methods) {
-                String methodName = method.getSimpleName().toString();
-
-                if (isIncompatible(method)) {
-                    adapterBuilder.addMethod(MethodSpec.overriding(method)
-                            .addStatement("throw new $T(\"$L\")", UnsupportedOperationException.class, methodName)
-                            .build());
-                    continue;
-                }
-
-                String methodPath = ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("");
-                String resolvedPath = Arrays.stream(methodPath.split("/")).filter(s -> !s.isEmpty()).map(subPath -> {
-                    if (subPath.startsWith("{")) {
-                        String pathParamName = subPath.substring(1, subPath.length() - 1);
-                        return method.getParameters().stream()
-                                .filter(a -> ofNullable(a.getAnnotation(PathParam.class)).map(PathParam::value)
-                                        .map(pathParamName::equals).orElse(false))
-                                .findFirst().map(a -> a.getSimpleName().toString())
-                                .orElse("null /* path param '" + pathParamName + "' does not match any argument! */");
-                    } else {
-                        return "\"" + subPath + "\"";
-                    }
-                }).collect(Collectors.joining(", "));
-
-                final String N = ""; // separator between each element
-                CodeBlock.Builder builder = CodeBlock.builder();
-                builder.add("$[return resolve($L)", resolvedPath);
-                {
-                    // query params
-                    method.getParameters().stream()
-                            .filter(p -> p.getAnnotation(QueryParam.class) != null)
-                            .forEach(p -> builder.add(".param($S, $L)" + N,
-                                    p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
-                            );
-                    // method type
-                    builder.add(".method($L)" + N, methodImport(methodImports, method.getAnnotationMirrors().stream()
-                            .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
-                            .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
-                    // accept
-                    String accept = ofNullable(method.getAnnotation(Consumes.class))
-                            .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
-                            .orElse(rsConsumes);
-                    if (!accept.equals("*/*")) builder.add(".accept($S)" + N, accept);
-                    // data
-                    method.getParameters().stream().filter(this::isParam).findFirst()
-                            .ifPresent(data -> builder.add(".data($L)" + N, data.getSimpleName()));
-                }
-
-                builder.add(".build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
-                adapterBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
-
+            if (isIncompatible(method)) {
+                proxyTypeBuilder.addMethod(MethodSpec.overriding(method)
+                        .addStatement("throw new $T(\"$L\")", UnsupportedOperationException.class, methodName)
+                        .build());
+                continue;
             }
 
-            Filer filer = processingEnv.getFiler();
-            JavaFile.Builder file = JavaFile.builder(serviceName.packageName(), adapterBuilder.build());
-            for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
-            file.build().writeTo(filer);
+            String methodPath = ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("");
+            String resolvedPath = Arrays.stream(methodPath.split("/")).filter(s -> !s.isEmpty()).map(subPath -> {
+                if (subPath.startsWith("{")) {
+                    String pathParamName = subPath.substring(1, subPath.length() - 1);
+                    return method.getParameters().stream()
+                            .filter(a -> ofNullable(a.getAnnotation(PathParam.class)).map(PathParam::value)
+                                    .map(pathParamName::equals).orElse(false))
+                            .findFirst().map(a -> a.getSimpleName().toString())
+                            .orElse("null /* path param '" + pathParamName + "' does not match any argument! */");
+                } else {
+                    return "\"" + subPath + "\"";
+                }
+            }).collect(Collectors.joining(", "));
+
+            CodeBlock.Builder builder = CodeBlock.builder();
+            builder.add("$[return resolve($L)", resolvedPath);
+            {
+                // query params
+                method.getParameters().stream()
+                        .filter(p -> p.getAnnotation(QueryParam.class) != null)
+                        .forEach(p -> builder.add(".param($S, $L)",
+                                p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
+                        );
+                // method type
+                builder.add(".method($L)", methodImport(methodImports, method.getAnnotationMirrors().stream()
+                        .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
+                        .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
+                // accept
+                String accept = ofNullable(method.getAnnotation(Consumes.class))
+                        .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
+                        .orElse(rsConsumes);
+                if (!accept.equals("*/*")) builder.add(".accept($S)", accept);
+                // data
+                method.getParameters().stream().filter(this::isParam).findFirst()
+                        .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
+            }
+
+            builder.add(".build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
+            proxyTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
+
         }
+
+        Filer filer = processingEnv.getFiler();
+        JavaFile.Builder file = JavaFile.builder(rsName.packageName(), proxyTypeBuilder.build());
+        for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
+        file.build().writeTo(filer);
     }
 
     private String methodImport(Set<String> methodImports, String method) {
@@ -208,11 +195,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         }
     }
 
-    private void error(String msg, Element element, AnnotationMirror annotation) {
-        processingEnv.getMessager().printMessage(Kind.ERROR, msg, element, annotation);
-    }
-
-    private void fatalError(String msg) {
-        processingEnv.getMessager().printMessage(Kind.ERROR, "FATAL ERROR: " + msg);
+    private void error(String msg) {
+        processingEnv.getMessager().printMessage(Kind.ERROR, msg);
     }
 }
