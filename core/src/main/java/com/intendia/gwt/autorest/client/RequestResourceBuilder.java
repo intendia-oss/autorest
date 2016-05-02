@@ -49,7 +49,7 @@ public class RequestResourceBuilder extends CollectorResourceBuilder {
     }
 
     @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
-        if (RequestBuilder.class.equals(type)) return (T) new RequestResourceBuilder(this);
+        if (ResourceBuilder.class.equals(type)) return (T) new RequestResourceBuilder(this);
         if (Single.class.equals(type)) return (T) single();
         if (Observable.class.equals(type)) return (T) observe();
         throw new UnsupportedOperationException("unsupported type " + type);
