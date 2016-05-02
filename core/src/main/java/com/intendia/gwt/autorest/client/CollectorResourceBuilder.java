@@ -77,7 +77,7 @@ public abstract class CollectorResourceBuilder implements ResourceBuilder {
         return query.isEmpty() ? "" : "?" + query;
     }
 
-    protected String uri() {
+    @Override public String uri() {
         String uri = "";
         for (String path : paths) uri += path;
         return uri + query();
