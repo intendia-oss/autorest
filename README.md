@@ -7,10 +7,9 @@ encoding/decoding which now is delegated to ``JSON.parse`` and
 ``JSON.stringify``. Thought to be used with JSO or JsInterop.
 
 To keep the project simple only part of the JSR311 will be supported:
-* @Path
+* @Path (regex not supported)
 * @HttpMethod (so all @GET, @POST...)
-* @PathParam
-* @QueryParam
+* @PathParam and @QueryParam (other params will be supported)
 
 Only [RxJava][rxjava] types (Observable and Single) can be used as return value.
 This is mandatory to share the same interface between the client and the server,
@@ -44,8 +43,8 @@ public class ExampleEntryPoint implements EntryPoint {
     }
 
     public void onModuleLoad() {
-        Resource root = new Resource("http://nominatim.openstreetmap.org/");
-        Nominatim nominatim = new Nominatim_RestServiceProxy(root, RequestBuilder::send);
+        ResourceBuilder root = new RequestResourceBuilder().path("http://nominatim.openstreetmap.org/");
+        Nominatim nominatim = new Nominatim_RestServiceProxy(root);
         nominatim.search("Málaga,España", "json").subscribe(n -> {
             GWT.log("[" + (int) (n.importance * 10.) + "] " + n.display_name + " (" + n.lon + "," + n.lat + ")");
         });
@@ -80,20 +79,20 @@ And *AutoREST* generates the GWT service proxy...
 ```java
 public class PizzaService_RestServiceProxy extends RestServiceProxy implements PizzaService {
 
-    public PizzaService_RestServiceProxy(Resource resource, Dispatcher dispatcher) {
-        super(resource, dispatcher, "orders");
+    public PizzaService_RestServiceProxy(ResourceBuilder resource) {
+        super(resource, "orders");
     }
 
     @POST Single<OrderConfirmation> createOrder(PizzaOrder request) {
-        return resolve().method(POST).data(request).observe(dispatcher());
+        return resolve().method(POST).data(request).build(Single.class);
     }
 
     @GET Observable<PizzaOrder> fetchOrders(@QueryParam("first") int first, @QueryParam("max") int max) {
-        return resolve().param("first",first).param("max",max).method(GET).observe(dispatcher());
+        return resolve().param("first",first).param("max",max).method(GET).build(Observable.class);
     }
 
     @GET @Path("{id}") Single<PizzaOrder> fetchOrder(@PathParam("id") orderId) {
-        return resolve(orderId).method(GET).single(dispatcher());
+        return resolve(orderId).method(GET).build(Single.class);
     }
 }
 ```
