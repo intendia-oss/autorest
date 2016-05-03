@@ -4,22 +4,22 @@ import javax.annotation.Nullable;
 
 public interface ResourceBuilder {
 
-    /** Append paths the the current resource path, or set if the path is absolute. */
+    /** Append paths, or set if the path is absolute. */
     ResourceBuilder path(Object... paths);
 
-    /** Add a query param to the current resource path. */
+    /** Sets a query param. */
     ResourceBuilder param(String key, @Nullable Object value);
 
-    /** Sets the http method to the current resource path. */
+    /** Sets the http method. */
     ResourceBuilder method(String method);
 
-    /** Add a http header to the current resource path. */
+    /** Sets a http header. */
     ResourceBuilder header(String key, String value);
 
-    /** Sets the content data to the current resource path. */
+    /** Sets the content data. */
     ResourceBuilder data(Object data);
 
-    /** Returns the current builder URI. */
+    /** Returns the current URI. */
     /* @Experimental */ String uri();
 
     <T> T build(Class<? super T> type);
