@@ -1,7 +1,6 @@
 package com.intendia.gwt.autorest.client;
 
 import javax.annotation.Nullable;
-import rx.annotations.Experimental;
 
 public interface ResourceBuilder {
 
@@ -21,7 +20,7 @@ public interface ResourceBuilder {
     ResourceBuilder data(Object data);
 
     /** Returns the current builder URI. */
-    @Experimental String uri();
+    /* @Experimental */ String uri();
 
     <T> T build(Class<? super T> type);
 

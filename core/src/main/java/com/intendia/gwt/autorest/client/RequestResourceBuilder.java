@@ -1,6 +1,7 @@
 package com.intendia.gwt.autorest.client;
 
 import static com.google.gwt.core.client.GWT.getHostPageBaseURL;
+import static com.google.gwt.http.client.URL.encodeQueryString;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
@@ -46,6 +47,20 @@ public class RequestResourceBuilder extends CollectorResourceBuilder {
         super(resource);
         this.expectedStatuses = resource.expectedStatuses;
         this.dispatcher = resource.dispatcher;
+    }
+
+    protected String query() {
+        String query = "";
+        for (Param param : params) {
+            query += (query.isEmpty() ? "" : "&") + encodeQueryString(param.key) + "=" + encodeQueryString(param.value);
+        }
+        return query.isEmpty() ? "" : "?" + query;
+    }
+
+    @Override public String uri() {
+        String uri = "";
+        for (String path : paths) uri += path;
+        return URL.encode(uri) + query();
     }
 
     @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
@@ -191,7 +206,7 @@ public class RequestResourceBuilder extends CollectorResourceBuilder {
     private static native <T> T stringify(Object value);
 
     private static class MyRequestBuilder extends RequestBuilder {
-        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, URL.encode(url)); }
+        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, url); }
     }
 
     private static class MyDispatcher implements Func1<RequestBuilder, Request> {
