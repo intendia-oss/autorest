@@ -7,9 +7,10 @@ encoding/decoding which now is delegated to ``JSON.parse`` and
 ``JSON.stringify``. Thought to be used with JSO or JsInterop.
 
 To keep the project simple only part of the JSR311 will be supported:
-* @Path (regex not supported)
+* @Path (regex not supported and there is no intention to do so)
 * @HttpMethod (so all @GET, @POST...)
 * @PathParam and @QueryParam (other params will be supported)
+* @Consumer and @Producer are currently ignored (treated both and always as 'application/json')
 
 Only [RxJava][rxjava] types (Observable and Single) can be used as return value.
 This is mandatory to share the same interface between the client and the server,

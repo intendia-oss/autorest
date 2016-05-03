@@ -39,7 +39,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
-import javax.ws.rs.Consumes;
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.HeaderParam;
@@ -76,15 +75,11 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
     private void processRestService(TypeElement restService) throws Exception {
         String rsPath = restService.getAnnotation(Path.class).value();
-        String rsConsumes = ofNullable(restService.getAnnotation(Consumes.class))
-                .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
-                .orElse("*/*");
 
         ClassName rsName = ClassName.get(restService);
         log("rest service interface: " + rsName);
 
-        ClassName proxyName = ClassName
-                .get(rsName.packageName(), rsName.simpleName() + "_RestServiceProxy");
+        ClassName proxyName = ClassName.get(rsName.packageName(), rsName.simpleName() + "_RestServiceProxy");
         log("rest service proxy: " + proxyName);
 
         TypeSpec.Builder proxyTypeBuilder = TypeSpec.classBuilder(proxyName.simpleName())
@@ -143,19 +138,12 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 builder.add(".method($L)", methodImport(methodImports, method.getAnnotationMirrors().stream()
                         .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
                         .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
-                // accept
-                String accept = ofNullable(method.getAnnotation(Consumes.class))
-                        .map(a -> a.value().length == 0 ? "*/*" : a.value()[0])
-                        .orElse(rsConsumes);
-                if (!accept.equals("*/*")) builder.add(".accept($S)", accept);
                 // data
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
-
             builder.add(".build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
             proxyTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
-
         }
 
         Filer filer = processingEnv.getFiler();
