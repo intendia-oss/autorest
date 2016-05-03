@@ -10,7 +10,7 @@
 
     <groupId>com.intendia.gwt.autorest</groupId>
     <artifactId>autorest-gwt-parent</artifactId>
-    <version>0.3</version>
+    <version>0.4-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>AutoRest</name>
