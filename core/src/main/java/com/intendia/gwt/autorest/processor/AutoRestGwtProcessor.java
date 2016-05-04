@@ -111,23 +111,18 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 continue;
             }
 
-            String methodPath = ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("");
-            String resolvedPath = Arrays.stream(methodPath.split("/")).filter(s -> !s.isEmpty()).map(subPath -> {
-                if (subPath.startsWith("{")) {
-                    String pathParamName = subPath.substring(1, subPath.length() - 1);
-                    return method.getParameters().stream()
-                            .filter(a -> ofNullable(a.getAnnotation(PathParam.class)).map(PathParam::value)
-                                    .map(pathParamName::equals).orElse(false))
-                            .findFirst().map(a -> a.getSimpleName().toString())
-                            .orElse("null /* path param '" + pathParamName + "' does not match any argument! */");
-                } else {
-                    return "\"" + subPath + "\"";
-                }
-            }).collect(Collectors.joining(", "));
-
-            CodeBlock.Builder builder = CodeBlock.builder();
-            builder.add("$[return resolve($L)", resolvedPath);
+            CodeBlock.Builder builder = CodeBlock.builder().add("$[return ");
             {
+                // resolve paths
+                builder.add("resolve($L)", Arrays
+                        .stream(ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("").split("/"))
+                        .filter(s -> !s.isEmpty()).map(path -> !path.startsWith("{") ? "\"" + path + "\"" : method
+                                .getParameters().stream()
+                                .filter(a -> ofNullable(a.getAnnotation(PathParam.class)).map(PathParam::value)
+                                        .map(v -> path.equals("{" + v + "}")).orElse(false))
+                                .findFirst().map(VariableElement::getSimpleName).map(Object::toString)
+                                .orElse("null /* path param " + path + " does not match any argument! */"))
+                        .collect(Collectors.joining(", ")));
                 // query params
                 method.getParameters().stream()
                         .filter(p -> p.getAnnotation(QueryParam.class) != null)
@@ -143,6 +138,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
             builder.add(".build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
+
             proxyTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
         }
 
