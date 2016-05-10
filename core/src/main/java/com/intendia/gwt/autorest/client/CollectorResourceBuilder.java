@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 import javax.ws.rs.HttpMethod;
 
 /* @Experimental */
-public abstract class CollectorResourceBuilder implements ResourceBuilder {
+public class CollectorResourceBuilder implements ResourceBuilder {
     private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
 
     protected static class Param {
@@ -87,8 +87,12 @@ public abstract class CollectorResourceBuilder implements ResourceBuilder {
         return uri + query();
     }
 
-    @Override
-    public String toString() {
+    @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
+        if (ResourceBuilder.class.equals(type)) return (T) new CollectorResourceBuilder(this);
+        throw new UnsupportedOperationException("unsupported type " + type);
+    }
+
+    @Override public String toString() {
         return method + " " + uri();
     }
 }

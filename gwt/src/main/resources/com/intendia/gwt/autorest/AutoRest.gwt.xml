@@ -3,4 +3,6 @@
 <module>
     <inherits name="com.google.gwt.core.Core"/>
     <inherits name="rx.Rx"/>
+    <source path="client"/>
+    <super-source path="super"/>
 </module>

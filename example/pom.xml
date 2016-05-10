@@ -3,18 +3,41 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.intendia.gwt.autorest</groupId>
-        <artifactId>autorest-gwt-parent</artifactId>
+        <artifactId>autorest-parent</artifactId>
         <version>0.4-SNAPSHOT</version>
     </parent>
     <artifactId>autorest-gwt-example</artifactId>
-    <packaging>war</packaging>
+    <packaging>gwt-app</packaging>
     <name>AutoRest :: Example</name>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.gwt</groupId>
+                <artifactId>gwt</artifactId>
+                <version>${gwt.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-gwt</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-processor</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>javax.ws.rs</groupId>
             <artifactId>jsr311-api</artifactId>
-            <version>1.1.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -24,11 +47,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.intendia.gwt.autorest</groupId>
-            <artifactId>autorest-gwt</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.gwt</groupId>
             <artifactId>gwt-user</artifactId>
         </dependency>
@@ -36,26 +54,12 @@
             <groupId>com.google.gwt</groupId>
             <artifactId>gwt-dev</artifactId>
         </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.7</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
-
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <directory>target/generated-sources/annotations</directory>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <proc>none</proc>
@@ -64,7 +68,6 @@
             <plugin>
                 <groupId>org.bsc.maven</groupId>
                 <artifactId>maven-processor-plugin</artifactId>
-                <version>2.2.4</version>
                 <executions>
                     <execution>
                         <goals>
@@ -80,44 +83,23 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>2.0.2</version>
+                <groupId>net.ltgt.gwt.maven</groupId>
+                <artifactId>gwt-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <moduleName>com.intendia.gwt.autorest.example.Example</moduleName>
+                    <skipModule>true</skipModule>
+                </configuration>
             </plugin>
             <plugin>
+                <!-- just here to make IntelliJ happy -->
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>gwt-maven-plugin</artifactId>
                 <version>2.7.0</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>test</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <runTarget>index.html</runTarget>
-                    <gen>${project.build.directory}/generated-sources/gwt</gen>
-                    <strict>true</strict>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.google.gwt</groupId>
-                        <artifactId>gwt-user</artifactId>
-                        <version>${gwt.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>com.google.gwt</groupId>
-                        <artifactId>gwt-dev</artifactId>
-                        <version>${gwt.version}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>2.8.2</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>

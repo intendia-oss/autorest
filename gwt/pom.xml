@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.intendia.gwt.autorest</groupId>
+        <artifactId>autorest-parent</artifactId>
+        <version>0.4-SNAPSHOT</version>
+    </parent>
+    <artifactId>autorest-gwt</artifactId>
+    <packaging>gwt-lib</packaging>
+    <name>AutoRest :: GWT</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-core</artifactId>
+            <version>${project.version}</version>
+            <classifier>sources</classifier>
+        </dependency>
+        <dependency>
+            <groupId>com.intendia.gwt</groupId>
+            <artifactId>rxjava-gwt</artifactId>
+            <version>${rxjava-gwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>jsr311-api</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>net.ltgt.gwt.maven</groupId>
+                <artifactId>gwt-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <moduleName>com.intendia.gwt.autorest.AutoRest</moduleName>
+                    <skipModule>true</skipModule>
+                    <relocateSuperSource>true</relocateSuperSource>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+

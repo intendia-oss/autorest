@@ -7,14 +7,15 @@ import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.TextBox;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
-import com.intendia.gwt.autorest.client.ResourceBuilder;
+import com.intendia.gwt.autorest.client.ResourceFactory;
 import rx.functions.Action1;
 
 public class ExampleEntryPoint implements EntryPoint {
     private Action1<Throwable> err = e -> GWT.log("exception: " + e, e);
 
     public void onModuleLoad() {
-        ResourceBuilder root = new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api");
+        ResourceFactory root = ResourceFactory.create(() -> new RequestResourceBuilder()
+                .path(GWT.getModuleBaseURL(), "api"));
 
         final ObservableService oService = ObservableService.Factory.create(root);
         final SingleService sService = SingleService.Factory.create(root);

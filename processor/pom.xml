@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.intendia.gwt.autorest</groupId>
+        <artifactId>autorest-parent</artifactId>
+        <version>0.4-SNAPSHOT</version>
+    </parent>
+    <artifactId>autorest-processor</artifactId>
+    <packaging>jar</packaging>
+    <name>AutoRest :: Processor</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auto</groupId>
+            <artifactId>auto-common</artifactId>
+            <version>0.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+            <version>1.7.0</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>jsr311-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.bsc.maven</groupId>
+                <artifactId>maven-processor-plugin</artifactId>
+                <configuration>
+                    <processors>
+                        <processor>com.intendia.gwt.autorest.processor.AutoRestGwtProcessor</processor>
+                    </processors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>process-test</id>
+                        <goals>
+                            <goal>process-test</goal>
+                        </goals>
+                        <configuration>
+                            <!-- IntelliJ 'test source directory' friendly (default directory is imported as source) -->
+                            <outputDirectory>target/generated-test-sources/test-annotations</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+

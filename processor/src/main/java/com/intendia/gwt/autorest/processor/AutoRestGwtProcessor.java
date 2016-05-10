@@ -14,7 +14,7 @@ import static javax.ws.rs.HttpMethod.PUT;
 
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.ResourceBuilder;
+import com.intendia.gwt.autorest.client.ResourceFactory;
 import com.intendia.gwt.autorest.client.RestServiceProxy;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -90,8 +90,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
         proxyTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addModifiers(PUBLIC)
-                .addParameter(ResourceBuilder.class, "resource")
-                .addStatement("super($L, $S)", "resource", rsPath)
+                .addParameter(ResourceFactory.class, "base")
+                .addStatement("super($L.lift(rb -> rb.path($S)))", "base", rsPath)
                 .build());
 
         List<ExecutableElement> methods = restService.getEnclosedElements().stream()
@@ -111,10 +111,10 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 continue;
             }
 
-            CodeBlock.Builder builder = CodeBlock.builder().add("$[return ");
+            CodeBlock.Builder builder = CodeBlock.builder().add("$[return factory.lift(rb -> rb");
             {
                 // resolve paths
-                builder.add("resolve($L)", Arrays
+                builder.add(".path($L)", Arrays
                         .stream(ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("").split("/"))
                         .filter(s -> !s.isEmpty()).map(path -> !path.startsWith("{") ? "\"" + path + "\"" : method
                                 .getParameters().stream()
@@ -137,7 +137,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
-            builder.add(".build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
+            builder.add(").collect().build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
 
             proxyTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
         }

@@ -24,5 +24,4 @@ public interface ResourceBuilder {
 
     <T> T build(Class<? super T> type);
 
-    default ResourceBuilder nest() { return build(ResourceBuilder.class); }
 }
