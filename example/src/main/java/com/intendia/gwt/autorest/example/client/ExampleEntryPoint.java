@@ -7,18 +7,15 @@ import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.TextBox;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
-import com.intendia.gwt.autorest.client.ResourceFactory;
+import com.intendia.gwt.autorest.client.ResourceBuilder;
 import rx.functions.Action1;
 
 public class ExampleEntryPoint implements EntryPoint {
     private Action1<Throwable> err = e -> GWT.log("exception: " + e, e);
 
     public void onModuleLoad() {
-        ResourceFactory root = ResourceFactory.create(() -> new RequestResourceBuilder()
-                .path(GWT.getModuleBaseURL(), "api"));
-
-        final ObservableService oService = ObservableService.Factory.create(root);
-        final SingleService sService = SingleService.Factory.create(root);
+        final ObservableService oService = ObservableService.Factory.create(this::getApi);
+        final SingleService sService = SingleService.Factory.create(this::getApi);
 
         append("Name:");
         final TextBox nameInput = new TextBox();
@@ -32,6 +29,8 @@ public class ExampleEntryPoint implements EntryPoint {
         oService.getFoo().subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
         oService.getFoo("FOO", "BAR", null).subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
     }
+
+    private ResourceBuilder getApi() { return new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api"); }
 
     private void getCustomGreeting(ObservableService service, String name) {
         Greeting greeting = JavaScriptObject.createObject().cast();

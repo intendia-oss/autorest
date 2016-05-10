@@ -14,18 +14,20 @@ import static javax.ws.rs.HttpMethod.PUT;
 
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.ResourceFactory;
+import com.intendia.gwt.autorest.client.ResourceBuilder;
 import com.intendia.gwt.autorest.client.RestServiceProxy;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.processing.AbstractProcessor;
@@ -90,8 +92,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
         proxyTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addModifiers(PUBLIC)
-                .addParameter(ResourceFactory.class, "base")
-                .addStatement("super($L.lift(rb -> rb.path($S)))", "base", rsPath)
+                .addParameter(ParameterizedTypeName.get(Supplier.class, ResourceBuilder.class), "factory")
+                .addStatement("super(() -> $L.get().path($S))", "factory", rsPath)
                 .build());
 
         List<ExecutableElement> methods = restService.getEnclosedElements().stream()
@@ -111,7 +113,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 continue;
             }
 
-            CodeBlock.Builder builder = CodeBlock.builder().add("$[return factory.lift(rb -> rb");
+            CodeBlock.Builder builder = CodeBlock.builder().add("$[return factory.get()");
             {
                 // resolve paths
                 builder.add(".path($L)", Arrays
@@ -137,7 +139,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
-            builder.add(").collect().build($T.class);\n$]", processingEnv.getTypeUtils().erasure(method.getReturnType()));
+            builder.add(".build($T.class);\n$]",
+                    processingEnv.getTypeUtils().erasure(method.getReturnType()));
 
             proxyTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
         }

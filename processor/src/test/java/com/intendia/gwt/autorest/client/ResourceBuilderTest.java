@@ -36,7 +36,7 @@ public class ResourceBuilderTest {
     }
 
     private static class TestResourceBuilder extends CollectorResourceBuilder {
-        final TestService service = new TestService_RestServiceProxy(ResourceFactory.create(() -> this));
+        final TestService service = new TestService_RestServiceProxy(() -> this);
         @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
             return ResourceBuilder.class.equals(type) ? (T) this : null;
         }

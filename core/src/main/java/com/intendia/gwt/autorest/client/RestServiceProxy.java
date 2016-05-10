@@ -1,9 +1,11 @@
 package com.intendia.gwt.autorest.client;
 
-public class RestServiceProxy {
-    protected final ResourceFactory factory;
+import java.util.function.Supplier;
 
-    public RestServiceProxy(ResourceFactory factory) {
+public class RestServiceProxy {
+    protected final Supplier<ResourceBuilder> factory;
+
+    public RestServiceProxy(Supplier<ResourceBuilder> factory) {
         this.factory = factory;
     }
 }
