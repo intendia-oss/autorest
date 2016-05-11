@@ -1,7 +1,7 @@
 package com.intendia.gwt.autorest.example.client;
 
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.ResourceBuilder;
+import com.intendia.gwt.autorest.client.ResourceVisitor;
 import java.util.function.Supplier;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -36,8 +36,8 @@ public interface ObservableService {
     @com.google.common.annotations.GwtIncompatible("serverOnly") Response guavaIncompatible();
 
     class Factory {
-        public static ObservableService create(Supplier<ResourceBuilder> factory) {
-            return new ObservableService_RestServiceProxy(() -> factory.get().header("mode", "observable"));
+        public static ObservableService create(Supplier<ResourceVisitor> factory) {
+            return new ObservableService_RestServiceModel(() -> factory.get().header("mode", "observable"));
         }
     }
 }

@@ -29,21 +29,21 @@ import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
 @Experimental
-public class RequestResourceBuilder extends CollectorResourceBuilder {
-    private static final Logger log = Logger.getLogger(RequestResourceBuilder.class.getName());
+public class RequestResourceVisitor extends CollectorResourceVisitor {
+    private static final Logger log = Logger.getLogger(RequestResourceVisitor.class.getName());
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
     private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
 
     private Func1<Integer, Boolean> expectedStatuses;
     private Func1<RequestBuilder, Request> dispatcher;
 
-    public RequestResourceBuilder() {
+    public RequestResourceVisitor() {
         super();
         this.expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
         this.dispatcher = DEFAULT_DISPATCHER;
     }
 
-    private RequestResourceBuilder(RequestResourceBuilder resource) {
+    private RequestResourceVisitor(RequestResourceVisitor resource) {
         super(resource);
         this.expectedStatuses = resource.expectedStatuses;
         this.dispatcher = resource.dispatcher;
@@ -63,8 +63,8 @@ public class RequestResourceBuilder extends CollectorResourceBuilder {
         return URL.encode(uri) + query();
     }
 
-    @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
-        if (ResourceBuilder.class.equals(type)) return (T) new RequestResourceBuilder(this);
+    @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> type) {
+        if (ResourceVisitor.class.equals(type)) return (T) new RequestResourceVisitor(this);
         if (Single.class.equals(type)) return (T) single();
         if (Observable.class.equals(type)) return (T) observe();
         throw new UnsupportedOperationException("unsupported type " + type);
@@ -92,7 +92,7 @@ public class RequestResourceBuilder extends CollectorResourceBuilder {
         return new MethodRequest(s, dispatcher, rb, expectedStatuses);
     }
 
-    public ResourceBuilder dispatcher(Func1<RequestBuilder, Request> dispatcher) {
+    public ResourceVisitor dispatcher(Func1<RequestBuilder, Request> dispatcher) {
         this.dispatcher = dispatcher;
         return this;
     }
@@ -102,7 +102,7 @@ public class RequestResourceBuilder extends CollectorResourceBuilder {
      * then the request is considered to have failed.  Defaults to accepting 200,201,204. If set to -1 then any status
      * code is considered a success.
      */
-    public ResourceBuilder expect(int... statuses) {
+    public ResourceVisitor expect(int... statuses) {
         if (statuses.length == 1 && statuses[0] < 0) expectedStatuses = status -> true;
         else expectedStatuses = asList(statuses)::contains;
         return this;

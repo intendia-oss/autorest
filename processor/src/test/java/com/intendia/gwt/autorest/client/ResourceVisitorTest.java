@@ -17,28 +17,28 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
 
-public class ResourceBuilderTest {
+public class ResourceVisitorTest {
 
     @Test public void params_works() throws Exception {
-        TestResourceBuilder builder = new TestResourceBuilder();
+        TestResourceVisitor builder = new TestResourceVisitor();
         builder.service.paramsWorks("s", 1, Arrays.asList(1, 2, 3));
         assertThat(builder.uri(), equalTo("./test?basic=s&primitiveInt=1&listOfInt=1&listOfInt=2&listOfInt=3"));
     }
 
     @Test public void paths_works() throws Exception {
-        TestResourceBuilder builder = new TestResourceBuilder();
+        TestResourceVisitor builder = new TestResourceVisitor();
         builder.service.pathsWorks("s", 1);
         assertThat(builder.uri(), equalTo("./test/s/middle/1"));
     }
 
     @Test(expected = UnsupportedOperationException.class) public void gwt_incompatible_throws_exception() {
-        new TestResourceBuilder().service.gwtIncompatible();
+        new TestResourceVisitor().service.gwtIncompatible();
     }
 
-    private static class TestResourceBuilder extends CollectorResourceBuilder {
-        final TestService service = new TestService_RestServiceProxy(() -> this);
-        @Override @SuppressWarnings("unchecked") public <T> T build(Class<? super T> type) {
-            return ResourceBuilder.class.equals(type) ? (T) this : null;
+    private static class TestResourceVisitor extends CollectorResourceVisitor {
+        final TestService service = new TestService_RestServiceModel(() -> this);
+        @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> type) {
+            return ResourceVisitor.class.equals(type) ? (T) this : null;
         }
     }
 

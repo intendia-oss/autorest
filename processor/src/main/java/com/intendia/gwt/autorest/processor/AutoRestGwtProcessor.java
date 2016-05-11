@@ -14,8 +14,8 @@ import static javax.ws.rs.HttpMethod.PUT;
 
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.ResourceBuilder;
-import com.intendia.gwt.autorest.client.RestServiceProxy;
+import com.intendia.gwt.autorest.client.ResourceVisitor;
+import com.intendia.gwt.autorest.client.RestServiceModel;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
@@ -81,19 +81,19 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         ClassName rsName = ClassName.get(restService);
         log("rest service interface: " + rsName);
 
-        ClassName proxyName = ClassName.get(rsName.packageName(), rsName.simpleName() + "_RestServiceProxy");
-        log("rest service proxy: " + proxyName);
+        ClassName modelName = ClassName.get(rsName.packageName(), rsName.simpleName() + "_RestServiceModel");
+        log("rest service model: " + modelName);
 
-        TypeSpec.Builder proxyTypeBuilder = TypeSpec.classBuilder(proxyName.simpleName())
+        TypeSpec.Builder modelTypeBuilder = TypeSpec.classBuilder(modelName.simpleName())
                 .addOriginatingElement(restService)
                 .addModifiers(Modifier.PUBLIC)
-                .superclass(RestServiceProxy.class)
+                .superclass(RestServiceModel.class)
                 .addSuperinterface(TypeName.get(restService.asType()));
 
-        proxyTypeBuilder.addMethod(MethodSpec.constructorBuilder()
+        modelTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addModifiers(PUBLIC)
-                .addParameter(ParameterizedTypeName.get(Supplier.class, ResourceBuilder.class), "factory")
-                .addStatement("super(() -> $L.get().path($S))", "factory", rsPath)
+                .addParameter(ParameterizedTypeName.get(Supplier.class, ResourceVisitor.class), "parent")
+                .addStatement("super(() -> $L.get().path($S))", "parent", rsPath)
                 .build());
 
         List<ExecutableElement> methods = restService.getEnclosedElements().stream()
@@ -107,14 +107,18 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
             String methodName = method.getSimpleName().toString();
 
             if (isIncompatible(method)) {
-                proxyTypeBuilder.addMethod(MethodSpec.overriding(method)
+                modelTypeBuilder.addMethod(MethodSpec.overriding(method)
                         .addStatement("throw new $T(\"$L\")", UnsupportedOperationException.class, methodName)
                         .build());
                 continue;
             }
 
-            CodeBlock.Builder builder = CodeBlock.builder().add("$[return factory.get()");
+            CodeBlock.Builder builder = CodeBlock.builder().add("$[return ");
             {
+                // method type
+                builder.add("method($L)", methodImport(methodImports, method.getAnnotationMirrors().stream()
+                        .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
+                        .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
                 // resolve paths
                 builder.add(".path($L)", Arrays
                         .stream(ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("").split("/"))
@@ -131,22 +135,18 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         .forEach(p -> builder.add(".param($S, $L)",
                                 p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
                         );
-                // method type
-                builder.add(".method($L)", methodImport(methodImports, method.getAnnotationMirrors().stream()
-                        .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
-                        .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
                 // data
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
-            builder.add(".build($T.class);\n$]",
+            builder.add(".as($T.class);\n$]",
                     processingEnv.getTypeUtils().erasure(method.getReturnType()));
 
-            proxyTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
+            modelTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
         }
 
         Filer filer = processingEnv.getFiler();
-        JavaFile.Builder file = JavaFile.builder(rsName.packageName(), proxyTypeBuilder.build());
+        JavaFile.Builder file = JavaFile.builder(rsName.packageName(), modelTypeBuilder.build());
         for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
         file.build().writeTo(filer);
     }
