@@ -6,8 +6,8 @@ import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.TextBox;
-import com.intendia.gwt.autorest.client.RequestResourceBuilder;
-import com.intendia.gwt.autorest.client.ResourceBuilder;
+import com.intendia.gwt.autorest.client.RequestResourceVisitor;
+import com.intendia.gwt.autorest.client.ResourceVisitor;
 import rx.functions.Action1;
 
 public class ExampleEntryPoint implements EntryPoint {
@@ -30,7 +30,7 @@ public class ExampleEntryPoint implements EntryPoint {
         oService.getFoo("FOO", "BAR", null).subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
     }
 
-    private ResourceBuilder getApi() { return new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api"); }
+    private ResourceVisitor getApi() { return new RequestResourceVisitor().path(GWT.getModuleBaseURL(), "api"); }
 
     private void getCustomGreeting(ObservableService service, String name) {
         Greeting greeting = JavaScriptObject.createObject().cast();

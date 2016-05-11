@@ -2,7 +2,7 @@
 
 *A source code generator for GWT compatible proxies from RESTful services (JSR311).*
 
-This porject is a fresh start of *RestyGWT* removing everything related to
+This project is a fresh start of *RestyGWT* removing everything related to
 encoding/decoding which now is delegated to ``JSON.parse`` and
 ``JSON.stringify``. Thought to be used with JSO or JsInterop.
 
@@ -44,12 +44,13 @@ public class ExampleEntryPoint implements EntryPoint {
     }
 
     public void onModuleLoad() {
-        ResourceBuilder root = new RequestResourceBuilder().path("http://nominatim.openstreetmap.org/");
-        Nominatim nominatim = new Nominatim_RestServiceProxy(root);
+        Nominatim nominatim = new Nominatim_RestServiceModel(() -> osm());
         nominatim.search("Málaga,España", "json").subscribe(n -> {
             GWT.log("[" + (int) (n.importance * 10.) + "] " + n.display_name + " (" + n.lon + "," + n.lat + ")");
         });
     }
+    
+    static ResourceVisitor osm() { return new RequestResourceVisitor().path("http://nominatim.openstreetmap.org/"); }
 }
 ```
 
@@ -60,11 +61,10 @@ using Jackson too, you can get inspired by [RxJavaJacksonSerializers][jackson].
 
 ## How is done?
 
-You define the service interface...
+You define the JAX-RS service interface...
 
 ```java
-@AutoRestGwt
-@Path("orders")
+@AutoRestGwt @Path("orders")
 public interface PizzaService {
 
     @POST Single<OrderConfirmation> createOrder(PizzaOrder request);
@@ -75,28 +75,34 @@ public interface PizzaService {
 }
 ```
 
-And *AutoREST* generates the GWT service proxy...
+And *AutoREST* generates the service model...
 
 ```java
-public class PizzaService_RestServiceProxy extends RestServiceProxy implements PizzaService {
+public class PizzaService_RestServiceModel extends RestServiceModel implements PizzaService {
 
-    public PizzaService_RestServiceProxy(ResourceBuilder resource) {
-        super(resource, "orders");
+    public PizzaService_RestServiceModel(Supplier<ResourceVisitor> parent) {
+        super(() -> parent.get().path("orders"));
     }
 
     @POST Single<OrderConfirmation> createOrder(PizzaOrder request) {
-        return resolve().method(POST).data(request).build(Single.class);
+        return method(POST).path().data(request).as(Single.class);
     }
 
     @GET Observable<PizzaOrder> fetchOrders(@QueryParam("first") int first, @QueryParam("max") int max) {
-        return resolve().param("first",first).param("max",max).method(GET).build(Observable.class);
+        return method(GET).path().param("first",first).param("max",max).as(Observable.class);
     }
 
     @GET @Path("{id}") Single<PizzaOrder> fetchOrder(@PathParam("id") orderId) {
-        return resolve(orderId).method(GET).build(Single.class);
+        return factory.get().path(orderId).method(GET).as(Single.class);
     }
 }
 ```
+
+This model map each resource method call all the way back to the root ``ResourceVisitor`` factory,
+create a new visitor, visits each resource until the end point is reached and ends wrapping the result
+into the expected type.
+
+![AutoREST evaluation flow](https://github.com/intendia-oss/autorest-gwt/raw/master/autorest-flow.gif)
 
 Everything looks quite simple, isn't it? This is important, keep it simple. If
 at any point something is not supported you can always implements it yourserlf.
