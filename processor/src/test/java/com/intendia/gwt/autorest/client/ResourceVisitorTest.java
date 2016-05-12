@@ -1,56 +1,51 @@
 package com.intendia.gwt.autorest.client;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
+import static com.google.common.primitives.Ints.asList;
+import static org.mockito.Mockito.RETURNS_SELF;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
+import org.mockito.InOrder;
 
 public class ResourceVisitorTest {
 
-    @Test public void params_works() throws Exception {
-        TestResourceVisitor builder = new TestResourceVisitor();
-        builder.service.paramsWorks("s", 1, Arrays.asList(1, 2, 3));
-        assertThat(builder.uri(), equalTo("./test?basic=s&primitiveInt=1&listOfInt=1&listOfInt=2&listOfInt=3"));
-    }
-
-    @Test public void paths_works() throws Exception {
-        TestResourceVisitor builder = new TestResourceVisitor();
-        builder.service.pathsWorks("s", 1);
-        assertThat(builder.uri(), equalTo("./test/s/middle/1"));
+    @Test public void visitor_works() throws Exception {
+        ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
+        TestService service = new TestService_RestServiceModel(() -> visitor);
+        service.method("s", 1, "s", 1, asList(1, 2, 3));
+        InOrder inOrder = inOrder(visitor);
+        inOrder.verify(visitor).path("a");
+        inOrder.verify(visitor).path("b", "s", 1, "c");
+        inOrder.verify(visitor).param("s", "s");
+        inOrder.verify(visitor).param("i", 1);
+        inOrder.verify(visitor).param("is", asList(1, 2, 3));
+        inOrder.verify(visitor).as(Object.class);
+        inOrder.verifyNoMoreInteractions();
     }
 
     @Test(expected = UnsupportedOperationException.class) public void gwt_incompatible_throws_exception() {
-        new TestResourceVisitor().service.gwtIncompatible();
+        TestService service = new TestService_RestServiceModel(() -> mock(ResourceVisitor.class));
+        service.gwtIncompatible();
     }
 
-    private static class TestResourceVisitor extends CollectorResourceVisitor {
-        final TestService service = new TestService_RestServiceModel(() -> this);
-        @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> type) {
-            return ResourceVisitor.class.equals(type) ? (T) this : null;
-        }
-    }
-
-    @AutoRestGwt @Path("test") public interface TestService {
-        @GET CompletableFuture<Void> paramsWorks(
-                @QueryParam("basic") String basic,
-                @QueryParam("primitiveInt") int primitiveInt,
-                @QueryParam("listOfInt") List<Integer> listOfInt);
-
-        @GET @Path("{basic}/middle/{primitiveInt}") CompletableFuture<Void> pathsWorks(
-                @PathParam("basic") String basic,
-                @PathParam("primitiveInt") int primitiveInt);
+    @AutoRestGwt @Path("a") public interface TestService {
+        @GET @Path("b/{s}/{i}/c") Object method(
+                @PathParam("s") String sPath,
+                @PathParam("i") int iPath,
+                @QueryParam("s") String sQuery,
+                @QueryParam("i") int iQuery,
+                @QueryParam("is") List<Integer> is);
 
         @GwtIncompatible Response gwtIncompatible();
     }

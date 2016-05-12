@@ -20,9 +20,6 @@ public interface ResourceVisitor {
     /** Sets the content data. */
     ResourceVisitor data(Object data);
 
-    /** Returns the current URI. */
-    /* @Experimental */ String uri();
-
     /** Wrap the current resource state into a {@code type}. */
     <T> T as(Class<? super T> type);
 

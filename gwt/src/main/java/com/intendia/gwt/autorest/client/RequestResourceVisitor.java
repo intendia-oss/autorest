@@ -43,28 +43,7 @@ public class RequestResourceVisitor extends CollectorResourceVisitor {
         this.dispatcher = DEFAULT_DISPATCHER;
     }
 
-    private RequestResourceVisitor(RequestResourceVisitor resource) {
-        super(resource);
-        this.expectedStatuses = resource.expectedStatuses;
-        this.dispatcher = resource.dispatcher;
-    }
-
-    protected String query() {
-        String query = "";
-        for (Param param : params) {
-            query += (query.isEmpty() ? "" : "&") + encodeQueryString(param.key) + "=" + encodeQueryString(param.value);
-        }
-        return query.isEmpty() ? "" : "?" + query;
-    }
-
-    @Override public String uri() {
-        String uri = "";
-        for (String path : paths) uri += path;
-        return URL.encode(uri) + query();
-    }
-
     @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> type) {
-        if (ResourceVisitor.class.equals(type)) return (T) new RequestResourceVisitor(this);
         if (Single.class.equals(type)) return (T) single();
         if (Observable.class.equals(type)) return (T) observe();
         throw new UnsupportedOperationException("unsupported type " + type);
@@ -79,6 +58,20 @@ public class RequestResourceVisitor extends CollectorResourceVisitor {
     public <T> Single<T> single() {
         //noinspection Convert2MethodRef
         return Observable.<T>create((s) -> createRequest(s)).toSingle();
+    }
+
+    protected String query() {
+        String query = "";
+        for (Param param : params) {
+            query += (query.isEmpty() ? "" : "&") + encodeQueryString(param.key) + "=" + encodeQueryString(param.value);
+        }
+        return query.isEmpty() ? "" : "?" + query;
+    }
+
+    protected String uri() {
+        String uri = "";
+        for (String path : paths) uri += path;
+        return URL.encode(uri) + query();
     }
 
     private <T> MethodRequest createRequest(Subscriber<T> s) {

@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 import javax.ws.rs.HttpMethod;
 
 /* @Experimental */
-public class CollectorResourceVisitor implements ResourceVisitor {
+public abstract class CollectorResourceVisitor implements ResourceVisitor {
     private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
 
     protected static class Param {
@@ -20,11 +20,11 @@ public class CollectorResourceVisitor implements ResourceVisitor {
         public Param(String key, String value) { this.key = key; this.value = value; }
     }
 
-    /* @VisibleForTesting */ List<String> paths;
-    /* @VisibleForTesting */ List<Param> params;
-    /* @VisibleForTesting */ String method;
-    /* @VisibleForTesting */ Map<String, String> headers;
-    /* @VisibleForTesting */ Object data;
+    protected List<String> paths;
+    protected List<Param> params;
+    protected String method;
+    protected Map<String, String> headers;
+    protected Object data;
 
     protected CollectorResourceVisitor() {
         this.paths = new ArrayList<>(singleton(".")); // so new Resource().path('/foo') results './foo' and not '/foo'
@@ -32,14 +32,6 @@ public class CollectorResourceVisitor implements ResourceVisitor {
         this.method = HttpMethod.GET;
         this.headers = new TreeMap<>();
         this.data = null;
-    }
-
-    protected CollectorResourceVisitor(CollectorResourceVisitor resource) {
-        this.paths = new ArrayList<>(resource.paths);
-        this.params = new ArrayList<>(resource.params);
-        this.method = resource.method;
-        this.headers = new TreeMap<>(resource.headers);
-        this.data = resource.data;
     }
 
     @Override public ResourceVisitor path(Object... paths) {
@@ -75,24 +67,7 @@ public class CollectorResourceVisitor implements ResourceVisitor {
         return this;
     }
 
-    protected String query() {
-        String query = "";
-        for (Param param : params) query += (query.isEmpty() ? "" : "&") + param.key + "=" + param.value;
-        return query.isEmpty() ? "" : "?" + query;
-    }
-
-    @Override public String uri() {
-        String uri = "";
-        for (String path : paths) uri += path;
-        return uri + query();
-    }
-
-    @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> type) {
-        if (ResourceVisitor.class.equals(type)) return (T) new CollectorResourceVisitor(this);
-        throw new UnsupportedOperationException("unsupported type " + type);
-    }
-
     @Override public String toString() {
-        return method + " " + uri();
+        return method + " " + paths;
     }
 }
