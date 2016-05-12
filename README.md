@@ -1,5 +1,7 @@
 # AutoREST for GWT [![Build Status](https://travis-ci.org/intendia-oss/autorest-gwt.svg)](https://travis-ci.org/intendia-oss/autorest-gwt)
 
+[![Join the chat at https://gitter.im/intendia-oss/autorest-gwt](https://badges.gitter.im/intendia-oss/autorest-gwt.svg)](https://gitter.im/intendia-oss/autorest-gwt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 *A source code generator for GWT compatible proxies from RESTful services (JSR311).*
 
 This project is a fresh start of *RestyGWT* removing everything related to
