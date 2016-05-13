@@ -12,6 +12,7 @@ import static javax.ws.rs.HttpMethod.OPTIONS;
 import static javax.ws.rs.HttpMethod.POST;
 import static javax.ws.rs.HttpMethod.PUT;
 
+import com.google.auto.common.MoreTypes;
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
@@ -40,6 +41,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.FormParam;
@@ -139,8 +141,10 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
-            builder.add(".as($T.class);\n$]",
-                    processingEnv.getTypeUtils().erasure(method.getReturnType()));
+            builder.add(".as($T.class, $T.class);\n$]",
+                    processingEnv.getTypeUtils().erasure(method.getReturnType()),
+                    MoreTypes.asDeclared(method.getReturnType()).getTypeArguments().stream().findFirst()
+                            .map(TypeName::get).orElse(TypeName.get(Void.class)));
 
             modelTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
         }

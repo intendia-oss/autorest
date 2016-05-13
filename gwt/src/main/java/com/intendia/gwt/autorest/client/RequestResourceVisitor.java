@@ -43,10 +43,10 @@ public class RequestResourceVisitor extends CollectorResourceVisitor {
         this.dispatcher = DEFAULT_DISPATCHER;
     }
 
-    @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> type) {
-        if (Single.class.equals(type)) return (T) single();
-        if (Observable.class.equals(type)) return (T) observe();
-        throw new UnsupportedOperationException("unsupported type " + type);
+    @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> container, Class<?> type) {
+        if (Single.class.equals(container)) return (T) single();
+        if (Observable.class.equals(container)) return (T) observe();
+        throw new UnsupportedOperationException("unsupported type " + container);
     }
 
     public <T> Observable<T> observe() {

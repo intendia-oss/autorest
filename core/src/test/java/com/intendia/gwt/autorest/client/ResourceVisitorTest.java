@@ -33,7 +33,7 @@ public class ResourceVisitorTest {
             return uri + query();
         }
 
-        @Override public <T> T as(Class<? super T> type) {
+        @Override public <T> T as(Class<? super T> container, Class<?> type) {
             return null;
         }
     }

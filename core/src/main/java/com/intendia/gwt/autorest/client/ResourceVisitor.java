@@ -20,7 +20,7 @@ public interface ResourceVisitor {
     /** Sets the content data. */
     ResourceVisitor data(Object data);
 
-    /** Wrap the current resource state into a {@code type}. */
-    <T> T as(Class<? super T> type);
+    /** Wrap the current resource state into a {@code container}. */
+    <T> T as(Class<? super T> container, Class<?> type);
 
 }

@@ -16,7 +16,7 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
 
     protected static class Param {
-        String key, value;
+        public String key, value;
         public Param(String key, String value) { this.key = key; this.value = value; }
     }
 

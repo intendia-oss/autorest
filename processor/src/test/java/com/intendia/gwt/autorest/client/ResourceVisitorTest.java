@@ -1,14 +1,18 @@
 package com.intendia.gwt.autorest.client;
 
 import static com.google.common.primitives.Ints.asList;
+import static java.util.Collections.singletonList;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -22,6 +26,7 @@ public class ResourceVisitorTest {
 
     @Test public void visitor_works() throws Exception {
         ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
+        when(visitor.as(List.class, String.class)).thenReturn(singletonList("done"));
         TestService service = new TestService_RestServiceModel(() -> visitor);
         service.method("s", 1, "s", 1, asList(1, 2, 3));
         InOrder inOrder = inOrder(visitor);
@@ -30,7 +35,7 @@ public class ResourceVisitorTest {
         inOrder.verify(visitor).param("s", "s");
         inOrder.verify(visitor).param("i", 1);
         inOrder.verify(visitor).param("is", asList(1, 2, 3));
-        inOrder.verify(visitor).as(Object.class);
+        inOrder.verify(visitor).as(List.class, String.class);
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -40,7 +45,7 @@ public class ResourceVisitorTest {
     }
 
     @AutoRestGwt @Path("a") public interface TestService {
-        @GET @Path("b/{s}/{i}/c") Object method(
+        @GET @Path("b/{s}/{i}/c") List<String> method(
                 @PathParam("s") String sPath,
                 @PathParam("i") int iPath,
                 @QueryParam("s") String sQuery,
