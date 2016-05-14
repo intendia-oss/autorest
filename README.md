@@ -49,7 +49,7 @@ public class ExampleEntryPoint implements EntryPoint {
             GWT.log("[" + (int) (n.importance * 10.) + "] " + n.display_name + " (" + n.lon + "," + n.lat + ")");
         });
     }
-    
+
     static ResourceVisitor osm() { return new RequestResourceVisitor().path("http://nominatim.openstreetmap.org/"); }
 }
 ```
@@ -108,6 +108,31 @@ Everything looks quite simple, isn't it? This is important, keep it simple. If
 at any point something is not supported you can always implements it yourserlf.
 This project try to be just a boilerplate-reducer library, the unique actual
 logic is the ``com.google.gwt.http.client.RequestBuilder`` to ``rx.Producer``code.
+
+## Response containers
+
+This library is focused on JSON. So you should only expect 3 types of JSON responses, an empty/ignored body response,
+a JSON Object response or a JSON Array response. This tree types will match perfectly with the Completable, Single
+and Observable RxJava type, we call this the **container**. You are not limited to RxJava wrappers, but you should keep
+in mind this 3 containers so you codec will handle the response as expected. The synchronous counterpart of this 3
+containers are ``Void``, ``T`` and ``T[]``. The next table shows the recommended response/container matching strategy.
+
+|           |Observable\<T>|Single\<T>|Completable|
+| :-:       | :-:          | :-:      | :-:       |
+|**[…]**    | **T(n items)** | Error* | Ignore    |
+|**{…}**    | T(1 item)    | **T**    | Ignore    |
+|**other**  | T*(1 item)   | T\*      | Ignore    |
+|**empty**  | Void(0 item) | Error    | **Ignore**|
+
+**\*Error**: an JSON array should be handled by an stream wrapper (to keep things simpler), but you are in control of
+the codec, so you might support array types like ``String[]``, so ``Single<String[]>`` will return the JSON arrays in a 
+``Single`` wrapper.
+
+**\*T**: the "other" row represent "other values" like ``"some string"`` or ``123``. Again, it is recommended to only
+support ``T`` types where ``T`` is not a primitive (boxed or not) nor an array, but is up to you support this
+``Single<Integer>`` or ``Observable<Float>``.
+
+**\*Ignore**: completable will always ignore the response only notifing a successfully response or error otherwise.
 
 
 
