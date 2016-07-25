@@ -3,6 +3,7 @@ package com.intendia.gwt.autorest.processor;
 import static com.google.auto.common.MoreTypes.asElement;
 import static java.util.Collections.singleton;
 import static java.util.Optional.ofNullable;
+import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 import static javax.ws.rs.HttpMethod.DELETE;
@@ -21,14 +22,12 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.processing.AbstractProcessor;
@@ -41,7 +40,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.FormParam;
@@ -94,8 +92,9 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
         modelTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addModifiers(PUBLIC)
-                .addParameter(ParameterizedTypeName.get(Supplier.class, ResourceVisitor.class), "parent")
-                .addStatement("super(() -> $L.get().path($S))", "parent", rsPath)
+                .addParameter(TypeName.get(ResourceVisitor.Supplier.class), "parent", FINAL)
+                .addStatement("super(new $T() { public $T get() { return $L.get().path($S); } })",
+                        ResourceVisitor.Supplier.class, ResourceVisitor.class, "parent", rsPath)
                 .build());
 
         List<ExecutableElement> methods = restService.getEnclosedElements().stream()

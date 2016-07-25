@@ -1,11 +1,9 @@
 package com.intendia.gwt.autorest.client;
 
-import java.util.function.Supplier;
-
 public class RestServiceModel {
-    protected final Supplier<ResourceVisitor> parent;
+    protected final ResourceVisitor.Supplier parent;
 
-    public RestServiceModel(Supplier<ResourceVisitor> parent) {
+    public RestServiceModel(ResourceVisitor.Supplier parent) {
         this.parent = parent;
     }
 

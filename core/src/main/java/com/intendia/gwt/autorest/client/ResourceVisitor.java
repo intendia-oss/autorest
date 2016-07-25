@@ -2,7 +2,7 @@ package com.intendia.gwt.autorest.client;
 
 import javax.annotation.Nullable;
 
-/** Visit each resource gathering the metadata and end up calling {@link #as(Class)}. */
+/** Visit each resource gathering the metadata and end up calling {@link #as(Class, Class)}. */
 public interface ResourceVisitor {
 
     /** Append paths, or set if the path is absolute. */
@@ -23,4 +23,7 @@ public interface ResourceVisitor {
     /** Wrap the current resource state into a {@code container}. */
     <T> T as(Class<? super T> container, Class<?> type);
 
+    interface Supplier {
+        ResourceVisitor get();
+    }
 }
