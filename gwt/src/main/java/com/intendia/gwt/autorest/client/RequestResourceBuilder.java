@@ -29,15 +29,15 @@ import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
 @Experimental
-public class RequestResourceVisitor extends CollectorResourceVisitor {
-    private static final Logger log = Logger.getLogger(RequestResourceVisitor.class.getName());
+public class RequestResourceBuilder extends CollectorResourceVisitor {
+    private static final Logger log = Logger.getLogger(RequestResourceBuilder.class.getName());
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
     private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
 
     private Func1<Integer, Boolean> expectedStatuses;
     private Func1<RequestBuilder, Request> dispatcher;
 
-    public RequestResourceVisitor() {
+    public RequestResourceBuilder() {
         super();
         this.expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
         this.dispatcher = DEFAULT_DISPATCHER;
@@ -60,7 +60,7 @@ public class RequestResourceVisitor extends CollectorResourceVisitor {
         return Observable.<T>create((s) -> createRequest(s)).toSingle();
     }
 
-    protected String query() {
+    public String query() {
         String query = "";
         for (Param param : params) {
             query += (query.isEmpty() ? "" : "&") + encodeQueryString(param.key) + "=" + encodeQueryString(param.value);
@@ -68,7 +68,7 @@ public class RequestResourceVisitor extends CollectorResourceVisitor {
         return query.isEmpty() ? "" : "?" + query;
     }
 
-    protected String uri() {
+    public String uri() {
         String uri = "";
         for (String path : paths) uri += path;
         return URL.encode(uri) + query();

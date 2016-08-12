@@ -50,7 +50,7 @@ public class ExampleEntryPoint implements EntryPoint {
         });
     }
 
-    static ResourceVisitor osm() { return new RequestResourceVisitor().path("http://nominatim.openstreetmap.org/"); }
+    static ResourceVisitor osm() { return new RequestResourceBuilder().path("http://nominatim.openstreetmap.org/"); }
 }
 ```
 

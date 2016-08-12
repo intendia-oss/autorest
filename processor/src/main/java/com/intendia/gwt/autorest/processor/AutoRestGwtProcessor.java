@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
+import javax.inject.Inject;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ElementKind;
@@ -91,6 +92,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 .addSuperinterface(TypeName.get(restService.asType()));
 
         modelTypeBuilder.addMethod(MethodSpec.constructorBuilder()
+                .addAnnotation(Inject.class)
                 .addModifiers(PUBLIC)
                 .addParameter(TypeName.get(ResourceVisitor.Supplier.class), "parent", FINAL)
                 .addStatement("super(new $T() { public $T get() { return $L.get().path($S); } })",
