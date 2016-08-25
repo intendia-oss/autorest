@@ -27,7 +27,7 @@ import rx.functions.Func1;
 import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
-@Experimental
+@Experimental @SuppressWarnings("GwtInconsistentSerializableClass")
 public class XhrResourceBuilder extends CollectorResourceVisitor {
     private static final int SC_OK = 200;
     private static final int SC_CREATED = 201;
@@ -106,7 +106,7 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
                     if (s.isUnsubscribed()) return;
                     if (xhr.getReadyState() == XMLHttpRequest.DONE) {
                         if (!isExpected(xhr.getStatus())) {
-                            s.onError(new FailedResponseException(xhr.getStatusText(), xhr.getStatus()));
+                            s.onError(new FailedStatusCodeException(xhr));
                         } else {
                             try {
                                 log.fine("Received http response for request: " + uri());
@@ -118,7 +118,7 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
                                 }
                             } catch (Throwable e) {
                                 log.log(Level.FINE, "Could not parse response: " + e, e);
-                                s.onError(new ResponseFormatException(e));
+                                s.onError(new ResponseFormatException(xhr, e));
                             }
                         }
                     }
@@ -141,7 +141,7 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
                 }
             } catch (Throwable e) {
                 log.log(Level.FINE, "Received http error for: " + uri(), e);
-                s.onError(new RequestResponseException(e));
+                s.onError(new RequestResponseException(xhr, e));
             }
         }
 
@@ -152,31 +152,22 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
         private boolean isExpected(int status) {
             return uri().startsWith("file") || expectedStatuses.call(status);
         }
+    }
 
-        public class RequestResponseException extends RuntimeException {
-            public RequestResponseException() { }
-            public RequestResponseException(String message) { super(message); }
-            public RequestResponseException(String message, Throwable cause) { super(message, cause); }
-            public RequestResponseException(Throwable cause) { super(cause); }
-            public XMLHttpRequest getXhr() { return xhr; }
-        }
+    public static class RequestResponseException extends RuntimeException {
+        protected final XMLHttpRequest xhr;
+        public RequestResponseException(XMLHttpRequest xhr, String msg) { super(msg); this.xhr = xhr; }
+        public RequestResponseException(XMLHttpRequest xhr, Throwable cause) { super(cause); this.xhr = xhr; }
+        public XMLHttpRequest getXhr() { return xhr; }
+    }
 
-        public class ResponseFormatException extends RequestResponseException {
-            public ResponseFormatException() {}
-            public ResponseFormatException(Throwable e) { super(e); }
-        }
+    public static class ResponseFormatException extends RequestResponseException {
+        public ResponseFormatException(XMLHttpRequest xhr, Throwable e) { super(xhr, e); }
+    }
 
-        public class FailedStatusCodeException extends RequestResponseException {
-            private final int statusCode;
-            public FailedStatusCodeException() { this.statusCode = 0; }
-            public FailedStatusCodeException(String message, int sc) { super(message); this.statusCode = sc; }
-            public int getStatusCode() { return statusCode; }
-        }
-
-        public class FailedResponseException extends FailedStatusCodeException {
-            public FailedResponseException() {}
-            public FailedResponseException(String statusText, int statusCode) { super(statusText, statusCode); }
-        }
+    public static class FailedStatusCodeException extends RequestResponseException {
+        public FailedStatusCodeException(XMLHttpRequest xhr) { super(xhr, xhr.getStatusText()); }
+        public int getStatusCode() { return xhr.getStatus(); }
     }
 
     @JsMethod(namespace = "JSON")

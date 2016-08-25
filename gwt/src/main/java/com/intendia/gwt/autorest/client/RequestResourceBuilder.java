@@ -27,7 +27,7 @@ import rx.functions.Func1;
 import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
-@Experimental
+@Experimental @SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
     private static final Logger log = Logger.getLogger(RequestResourceBuilder.class.getName());
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
@@ -116,20 +116,21 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
             try {
                 rb.setCallback(new RequestCallback() {
 
-                    @Override public void onError(Request request, Throwable exception) {
-                        s.onError(exception);
+                    @Override public void onError(Request req, Throwable e) {
+                        s.onError(e);
                     }
 
-                    @Override public void onResponseReceived(Request request, @Nullable Response response) {
-                        MethodRequest.this.response = response;
-                        if (response == null) {
-                            s.onError(new FailedStatusCodeException("TIMEOUT", 999));
-                        } else if (!isExpected(response.getStatusCode())) {
-                            s.onError(new FailedResponseException(response.getStatusText(), response.getStatusCode()));
+                    @Override public void onResponseReceived(Request req, @Nullable Response res) {
+                        MethodRequest mr = MethodRequest.this;
+                        mr.response = res;
+                        if (res == null) {
+                            s.onError(new FailedStatusCodeException(mr, "TIMEOUT", 999));
+                        } else if (!isExpected(res.getStatusCode())) {
+                            s.onError(new FailedStatusCodeException(mr, res.getStatusText(), res.getStatusCode()));
                         } else {
                             try {
                                 log.fine("Received http response for request: " + rb.getUrl());
-                                String text = response.getText();
+                                String text = res.getText();
                                 if (text == null || text.isEmpty()) {
                                     producer.setValue(null);
                                 } else {
@@ -137,7 +138,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                                 }
                             } catch (Throwable e) {
                                 log.log(Level.FINE, "Could not parse response: " + e, e);
-                                s.onError(new ResponseFormatException(e));
+                                s.onError(new ResponseFormatException(mr, e));
                             }
                         }
                     }
@@ -149,7 +150,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                 request = d.call(rb);
             } catch (Throwable e) {
                 log.log(Level.FINE, "Received http error for: " + rb.getUrl(), e);
-                s.onError(new RequestResponseException(e));
+                s.onError(new RequestResponseException(this, e));
             }
         }
 
@@ -161,31 +162,24 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
             return url.startsWith("file") || expectedStatuses.call(status);
         }
 
-        public class RequestResponseException extends RuntimeException {
-            public RequestResponseException() { }
-            public RequestResponseException(String message) { super(message); }
-            public RequestResponseException(String message, Throwable cause) { super(message, cause); }
-            public RequestResponseException(Throwable cause) { super(cause); }
-            public @Nullable Request getRequest() { return request; }
-            public @Nullable Response getResponse() { return response; }
-        }
+    }
 
-        public class ResponseFormatException extends RequestResponseException {
-            public ResponseFormatException() {}
-            public ResponseFormatException(Throwable e) { super(e); }
-        }
+    public static class RequestResponseException extends RuntimeException {
+        private final MethodRequest mr;
+        public RequestResponseException(MethodRequest r, String m) { super(m); this.mr = r; }
+        public RequestResponseException(MethodRequest r, Throwable c) { super(c); this.mr = r; }
+        public @Nullable Request getRequest() { return mr.request; }
+        public @Nullable Response getResponse() { return mr.response; }
+    }
 
-        public class FailedStatusCodeException extends RequestResponseException {
-            private final int statusCode;
-            public FailedStatusCodeException() { this.statusCode = 0; }
-            public FailedStatusCodeException(String message, int sc) { super(message); this.statusCode = sc; }
-            public int getStatusCode() { return statusCode; }
-        }
+    public static class ResponseFormatException extends RequestResponseException {
+        public ResponseFormatException(MethodRequest mr, Throwable e) { super(mr, e); }
+    }
 
-        public class FailedResponseException extends FailedStatusCodeException {
-            public FailedResponseException() {}
-            public FailedResponseException(String statusText, int statusCode) { super(statusText, statusCode); }
-        }
+    public static class FailedStatusCodeException extends RequestResponseException {
+        private final int statusCode;
+        public FailedStatusCodeException(MethodRequest mr, String m, int sc) { super(mr, m); this.statusCode = sc; }
+        public int getStatusCode() { return statusCode; }
     }
 
     @JsMethod(namespace = "JSON")
