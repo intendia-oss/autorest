@@ -11,6 +11,9 @@ public interface ResourceVisitor {
     /** Sets a query param. */
     ResourceVisitor param(String key, @Nullable Object value);
 
+    /** Sets a from param. */
+    ResourceVisitor form(String key, @Nullable Object value);
+
     /** Sets the http method. */
     ResourceVisitor method(String method);
 

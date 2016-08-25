@@ -3,6 +3,7 @@ package com.intendia.gwt.autorest.example.client;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import java.util.function.Supplier;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -23,6 +24,8 @@ public interface SingleService {
     @com.google.gwt.core.shared.GwtIncompatible Response gwtIncompatible();
 
     @com.google.common.annotations.GwtIncompatible("serverOnly") Response guavaIncompatible();
+
+    @POST Single<Greeting> postForm(@FormParam("name") String name);
 
     class Factory {
         public static SingleService create(Supplier<ResourceVisitor> factory) {

@@ -138,6 +138,12 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         .forEach(p -> builder.add(".param($S, $L)",
                                 p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
                         );
+                // form params
+                method.getParameters().stream()
+                        .filter(p -> p.getAnnotation(FormParam.class) != null)
+                        .forEach(p -> builder.add(".form($S, $L)",
+                                p.getAnnotation(FormParam.class).value(), p.getSimpleName())
+                        );
                 // data
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));

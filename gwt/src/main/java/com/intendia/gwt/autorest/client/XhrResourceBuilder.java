@@ -1,42 +1,48 @@
 package com.intendia.gwt.autorest.client;
 
-import static com.google.gwt.http.client.URL.encodeQueryString;
+import static elemental.client.Browser.encodeURI;
+import static elemental.client.Browser.encodeURIComponent;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
+import static java.util.Collections.emptyList;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.MULTIPART_FORM_DATA;
 
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestBuilder;
-import com.google.gwt.http.client.RequestCallback;
-import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.Response;
-import com.google.gwt.http.client.URL;
+import elemental.client.Browser;
+import elemental.html.FormData;
+import elemental.js.html.JsFormData;
+import elemental.xml.XMLHttpRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nullable;
 import jsinterop.annotations.JsMethod;
 import rx.Observable;
 import rx.Single;
 import rx.Subscriber;
 import rx.annotations.Experimental;
+import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
 @Experimental
-public class RequestResourceBuilder extends CollectorResourceVisitor {
-    private static final Logger log = Logger.getLogger(RequestResourceBuilder.class.getName());
-    private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
-    private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
+public class XhrResourceBuilder extends CollectorResourceVisitor {
+    private static final int SC_OK = 200;
+    private static final int SC_CREATED = 201;
+    private static final int SC_ACCEPTED = 202;
+    private static final int SC_NO_CONTENT = 204;
+    private static final int SC_NO_CONTENT_IE = 1223;
+    private static final Logger log = Logger.getLogger(XhrResourceBuilder.class.getName());
+    private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(SC_OK, SC_CREATED, SC_ACCEPTED, SC_NO_CONTENT,
+            SC_NO_CONTENT_IE);
+    private static final Action1<XMLHttpRequest> DEFAULT_DISPATCHER = request -> { /* no op */ };
 
     private Func1<Integer, Boolean> expectedStatuses;
-    private Func1<RequestBuilder, Request> dispatcher;
+    private Action1<XMLHttpRequest> dispatcher;
 
-    public RequestResourceBuilder() {
+    public XhrResourceBuilder() {
         super();
         this.expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
         this.dispatcher = DEFAULT_DISPATCHER;
@@ -49,14 +55,11 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     }
 
     public <T> Observable<T> observe() {
-        //noinspection Convert2MethodRef
-        return Observable.<T[]>create((s) -> createRequest(s))
-                .flatMapIterable(o -> o == null ? singleton(null) : asList(o));
+        return Observable.<T[]>create(MethodRequest::new).flatMapIterable(o -> o == null ? emptyList() : asList(o));
     }
 
     public <T> Single<T> single() {
-        //noinspection Convert2MethodRef
-        return Observable.<T>create((s) -> createRequest(s)).toSingle();
+        return Observable.<T>create(MethodRequest::new).toSingle();
     }
 
     public String query() {
@@ -65,35 +68,20 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         return q.isEmpty() ? "" : "?" + q;
     }
 
-    private String encode(String str) {
-        return encodeQueryString(str);
-    }
-
     public String uri() {
         String uri = "";
         for (String path : paths) uri += path;
-        return URL.encode(uri) + query();
+        return encodeURI(uri) + query();
     }
 
-    private <T> MethodRequest createRequest(Subscriber<T> s) {
-        MyRequestBuilder rb = new MyRequestBuilder(method, uri());
-
-        rb.setRequestData(data == null ? null : stringify(data));
-        for (Map.Entry<String, String> h : headers.entrySet()) rb.setHeader(h.getKey(), h.getValue());
-        if (!headers.containsKey(CONTENT_TYPE)) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
-        if (!headers.containsKey(ACCEPT)) rb.setHeader(ACCEPT, APPLICATION_JSON);
-
-        return new MethodRequest(s, dispatcher, rb, expectedStatuses);
-    }
-
-    public ResourceVisitor dispatcher(Func1<RequestBuilder, Request> dispatcher) {
+    public ResourceVisitor dispatcher(Action1<XMLHttpRequest> dispatcher) {
         this.dispatcher = dispatcher;
         return this;
     }
 
     /**
      * Sets the expected response status code.  If the response status code does not match any of the values specified
-     * then the request is considered to have failed.  Defaults to accepting 200,201,204. If set to -1 then any status
+     * then the request is considered to have failed. Defaults to accepting 200,201,204. If set to -1 then any status
      * code is considered a success.
      */
     public ResourceVisitor expect(int... statuses) {
@@ -102,34 +90,27 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         return this;
     }
 
-    private static class MethodRequest {
-        private final String url;
-        private final Func1<Integer, Boolean> expectedStatuses;
-        public @Nullable Response response;
-        public @Nullable Request request;
+    private class MethodRequest {
+        private final XMLHttpRequest xhr;
 
-        public <T> MethodRequest(Subscriber<T> s, Func1<RequestBuilder, Request> d, MyRequestBuilder rb,
-                Func1<Integer, Boolean> expectedStatuses) {
-            this.expectedStatuses = expectedStatuses;
-            url = rb.getUrl();
+        public <T> MethodRequest(Subscriber<T> s) {
+            xhr = Browser.getWindow().newXMLHttpRequest();
+            xhr.open(method, uri());
+
+            for (Map.Entry<String, String> h : headers.entrySet()) xhr.setRequestHeader(h.getKey(), h.getValue());
+            if (!headers.containsKey(ACCEPT)) xhr.setRequestHeader(ACCEPT, APPLICATION_JSON);
+
             SingleDelayedProducer<T> producer = new SingleDelayedProducer<>(s);
             try {
-                rb.setCallback(new RequestCallback() {
-
-                    @Override public void onError(Request request, Throwable exception) {
-                        s.onError(exception);
-                    }
-
-                    @Override public void onResponseReceived(Request request, @Nullable Response response) {
-                        MethodRequest.this.response = response;
-                        if (response == null) {
-                            s.onError(new FailedStatusCodeException("TIMEOUT", 999));
-                        } else if (!isExpected(response.getStatusCode())) {
-                            s.onError(new FailedResponseException(response.getStatusText(), response.getStatusCode()));
+                xhr.setOnreadystatechange(evt -> {
+                    if (s.isUnsubscribed()) return;
+                    if (xhr.getReadyState() == XMLHttpRequest.DONE) {
+                        if (!isExpected(xhr.getStatus())) {
+                            s.onError(new FailedResponseException(xhr.getStatusText(), xhr.getStatus()));
                         } else {
                             try {
-                                log.fine("Received http response for request: " + rb.getUrl());
-                                String text = response.getText();
+                                log.fine("Received http response for request: " + uri());
+                                String text = xhr.getResponseText();
                                 if (text == null || text.isEmpty()) {
                                     producer.setValue(null);
                                 } else {
@@ -143,12 +124,23 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                     }
                 });
                 s.setProducer(producer);
-                s.add(Subscriptions.create(() -> {
-                    if (request != null) request.cancel();
-                }));
-                request = d.call(rb);
+                s.add(Subscriptions.create(xhr::abort));
+
+                dispatcher.call(xhr);
+
+                if (data != null) {
+                    xhr.setRequestHeader(CONTENT_TYPE, APPLICATION_JSON);
+                    xhr.send(stringify(data));
+                } else if (!formParams.isEmpty()) {
+                    xhr.setRequestHeader(CONTENT_TYPE, MULTIPART_FORM_DATA);
+                    FormData form = createFormData();
+                    formParams.forEach(p -> append(form, p.key, p.value));
+                    xhr.send(form);
+                } else {
+                    xhr.send();
+                }
             } catch (Throwable e) {
-                log.log(Level.FINE, "Received http error for: " + rb.getUrl(), e);
+                log.log(Level.FINE, "Received http error for: " + uri(), e);
                 s.onError(new RequestResponseException(e));
             }
         }
@@ -158,7 +150,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
          * accept all codes. This is for instance relevant when developing a PhoneGap application.
          */
         private boolean isExpected(int status) {
-            return url.startsWith("file") || expectedStatuses.call(status);
+            return uri().startsWith("file") || expectedStatuses.call(status);
         }
 
         public class RequestResponseException extends RuntimeException {
@@ -166,8 +158,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
             public RequestResponseException(String message) { super(message); }
             public RequestResponseException(String message, Throwable cause) { super(message, cause); }
             public RequestResponseException(Throwable cause) { super(cause); }
-            public @Nullable Request getRequest() { return request; }
-            public @Nullable Response getResponse() { return response; }
+            public XMLHttpRequest getXhr() { return xhr; }
         }
 
         public class ResponseFormatException extends RequestResponseException {
@@ -192,15 +183,17 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     private static native <T> T parse(String text);
 
     @JsMethod(namespace = "JSON")
-    private static native <T> T stringify(Object value);
+    private static native String stringify(Object value);
 
-    private static class MyRequestBuilder extends RequestBuilder {
-        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, url); }
-    }
+    private static native JsFormData createFormData()/*-{
+        return new $wnd.FormData();
+    }-*/;
 
-    private static class MyDispatcher implements Func1<RequestBuilder, Request> {
-        @Override public Request call(RequestBuilder requestBuilder) {
-            try { return requestBuilder.send(); } catch (RequestException e) { throw new RuntimeException(e); }
-        }
+    public static native void append(FormData formData, String name, Object value)/*-{
+        formData.append(name, value);
+    }-*/;
+
+    private static String encode(String decodedURLComponent) {
+        return encodeURIComponent(decodedURLComponent).replaceAll("%20", "+");
     }
 }

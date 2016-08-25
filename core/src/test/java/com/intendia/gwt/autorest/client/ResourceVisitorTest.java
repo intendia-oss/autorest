@@ -27,9 +27,9 @@ public class ResourceVisitorTest {
     }
     private static class MyCollectorResourceVisitor extends CollectorResourceVisitor {
         protected String query() {
-            String query = "";
-            for (Param param : params) query += (query.isEmpty() ? "" : "&") + param.key + "=" + param.value;
-            return query.isEmpty() ? "" : "?" + query;
+            String q = "";
+            for (Param p : queryParams) q += (q.isEmpty() ? "" : "&") + p.key + "=" + p.value;
+            return q.isEmpty() ? "" : "?" + q;
         }
 
         public String uri() {

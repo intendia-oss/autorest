@@ -16,19 +16,21 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
 
     protected static class Param {
-        public String key, value;
-        public Param(String key, String value) { this.key = key; this.value = value; }
+        public String key;
+        public Object value;
+        public Param(String key, Object value) { this.key = key; this.value = value; }
     }
 
     protected List<String> paths;
-    protected List<Param> params;
+    protected List<Param> queryParams;
+    protected List<Param> formParams;
     protected String method;
     protected Map<String, String> headers;
     protected Object data;
 
     protected CollectorResourceVisitor() {
         this.paths = new ArrayList<>(singleton(".")); // so new Resource().path('/foo') results './foo' and not '/foo'
-        this.params = new ArrayList<>();
+        this.queryParams = new ArrayList<>();
         this.method = HttpMethod.GET;
         this.headers = new TreeMap<>();
         this.data = null;
@@ -48,7 +50,13 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
 
     @Override public ResourceVisitor param(String key, @Nullable Object value) {
         if (value instanceof Iterable<?>) for (Object v : ((Iterable<?>) value)) param(key, v);
-        else if (value != null) params.add(new Param(key, Objects.toString(value)));
+        else if (value != null) queryParams.add(new Param(key, value));
+        return this;
+    }
+
+    @Override public ResourceVisitor form(String key, @Nullable Object value) {
+        if (value instanceof Iterable<?>) for (Object v : ((Iterable<?>) value)) form(key, v);
+        else if (value != null) formParams.add(new Param(key, value));
         return this;
     }
 
