@@ -80,20 +80,20 @@ And *AutoREST* generates the service model...
 ```java
 public class PizzaService_RestServiceModel extends RestServiceModel implements PizzaService {
 
-    public PizzaService_RestServiceModel(Supplier<ResourceVisitor> parent) {
+    public PizzaService_RestServiceModel(ResourceVisitor.Supplier parent) {
         super(() -> parent.get().path("orders"));
     }
 
     @POST Single<OrderConfirmation> createOrder(PizzaOrder request) {
-        return method(POST).path().data(request).as(Single.class);
+        return method(POST).path().data(request).as(Single.class,OrderConfirmation.class);
     }
 
     @GET Observable<PizzaOrder> fetchOrders(@QueryParam("first") int first, @QueryParam("max") int max) {
-        return method(GET).path().param("first",first).param("max",max).as(Observable.class);
+        return method(GET).path().param("first",first).param("max",max).as(Observable.class,PizzaOrder.class);
     }
 
     @GET @Path("{id}") Single<PizzaOrder> fetchOrder(@PathParam("id") orderId) {
-        return factory.get().path(orderId).method(GET).as(Single.class);
+        return method(GET).path(orderId).as(Single.class,PizzaOrder.class);
     }
 }
 ```
