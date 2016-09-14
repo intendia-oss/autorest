@@ -133,17 +133,14 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                                 .orElse("null /* path param " + path + " does not match any argument! */"))
                         .collect(Collectors.joining(", ")));
                 // query params
-                method.getParameters().stream()
-                        .filter(p -> p.getAnnotation(QueryParam.class) != null)
-                        .forEach(p -> builder.add(".param($S, $L)",
-                                p.getAnnotation(QueryParam.class).value(), p.getSimpleName())
-                        );
+                method.getParameters().stream().filter(p -> p.getAnnotation(QueryParam.class) != null).forEach(p ->
+                        builder.add(".param($S, $L)", p.getAnnotation(QueryParam.class).value(), p.getSimpleName()));
+                // header params
+                method.getParameters().stream().filter(p -> p.getAnnotation(HeaderParam.class) != null).forEach(p ->
+                        builder.add(".header($S, $L)", p.getAnnotation(HeaderParam.class).value(), p.getSimpleName()));
                 // form params
-                method.getParameters().stream()
-                        .filter(p -> p.getAnnotation(FormParam.class) != null)
-                        .forEach(p -> builder.add(".form($S, $L)",
-                                p.getAnnotation(FormParam.class).value(), p.getSimpleName())
-                        );
+                method.getParameters().stream().filter(p -> p.getAnnotation(FormParam.class) != null).forEach(p ->
+                        builder.add(".form($S, $L)", p.getAnnotation(FormParam.class).value(), p.getSimpleName()));
                 // data
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));

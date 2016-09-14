@@ -1,5 +1,6 @@
 package com.intendia.gwt.autorest.client;
 
+import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
 import static elemental.client.Browser.encodeURI;
 import static elemental.client.Browser.encodeURIComponent;
 import static java.util.Arrays.asList;
@@ -13,8 +14,10 @@ import elemental.client.Browser;
 import elemental.html.FormData;
 import elemental.js.html.JsFormData;
 import elemental.xml.XMLHttpRequest;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jsinterop.annotations.JsMethod;
@@ -64,7 +67,7 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
 
     public String query() {
         String q = "";
-        for (Param p : queryParams) q += (q.isEmpty() ? "" : "&") + encode(p.key) + "=" + encode(p.value.toString());
+        for (Param p : expand(queryParams)) q += (q.isEmpty() ? "" : "&") + encode(p.k) + "=" + encode(p.v.toString());
         return q.isEmpty() ? "" : "?" + q;
     }
 
@@ -97,6 +100,8 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
             xhr = Browser.getWindow().newXMLHttpRequest();
             xhr.open(method, uri());
 
+            Map<String, String> headers = new HashMap<>();
+            for (Param h : headerParams) headers.put(h.k, Objects.toString(h.v));
             for (Map.Entry<String, String> h : headers.entrySet()) xhr.setRequestHeader(h.getKey(), h.getValue());
             if (!headers.containsKey(ACCEPT)) xhr.setRequestHeader(ACCEPT, APPLICATION_JSON);
 
@@ -134,7 +139,7 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
                 } else if (!formParams.isEmpty()) {
                     xhr.setRequestHeader(CONTENT_TYPE, MULTIPART_FORM_DATA);
                     FormData form = createFormData();
-                    formParams.forEach(p -> append(form, p.key, p.value));
+                    formParams.forEach(p -> append(form, p.k, p.v));
                     xhr.send(form);
                 } else {
                     xhr.send();

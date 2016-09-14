@@ -1,5 +1,6 @@
 package com.intendia.gwt.autorest.client;
 
+import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -20,15 +21,15 @@ public class ResourceVisitorTest {
         assertThat(rb1.uri(), equalTo("http://base/path1?p1=v1"));
 
         ResourceVisitor.Supplier ch2 = new ResourceVisitor.Supplier() {
-            public ResourceVisitor get() { return ch1.get().path("path2").param("p2", "v2"); }
+            public ResourceVisitor get() { return ch1.get().path("path2").param("p2", asList("v2a", "v2b")); }
         };
         MyCollectorResourceVisitor rb2 = (MyCollectorResourceVisitor) ch2.get();
-        assertThat(rb2.uri(), equalTo("http://base/path1/path2?p1=v1&p2=v2"));
+        assertThat(rb2.uri(), equalTo("http://base/path1/path2?p1=v1&p2=v2a&p2=v2b"));
     }
     private static class MyCollectorResourceVisitor extends CollectorResourceVisitor {
         protected String query() {
             String q = "";
-            for (Param p : queryParams) q += (q.isEmpty() ? "" : "&") + p.key + "=" + p.value;
+            for (Param p : Param.expand(queryParams)) q += (q.isEmpty() ? "" : "&") + p.k + "=" + p.v;
             return q.isEmpty() ? "" : "?" + q;
         }
 

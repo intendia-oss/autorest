@@ -1,6 +1,7 @@
 package com.intendia.gwt.autorest.client;
 
 import static com.google.gwt.http.client.URL.encodeQueryString;
+import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
@@ -14,7 +15,7 @@ import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.URL;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
@@ -61,7 +62,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
 
     public String query() {
         String q = "";
-        for (Param p : queryParams) q += (q.isEmpty() ? "" : "&") + encode(p.key) + "=" + encode(p.value.toString());
+        for (Param p : expand(queryParams)) q += (q.isEmpty() ? "" : "&") + encode(p.k) + "=" + encode(p.v.toString());
         return q.isEmpty() ? "" : "?" + q;
     }
 
@@ -79,9 +80,9 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         MyRequestBuilder rb = new MyRequestBuilder(method, uri());
 
         rb.setRequestData(data == null ? null : stringify(data));
-        for (Map.Entry<String, String> h : headers.entrySet()) rb.setHeader(h.getKey(), h.getValue());
-        if (!headers.containsKey(CONTENT_TYPE)) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
-        if (!headers.containsKey(ACCEPT)) rb.setHeader(ACCEPT, APPLICATION_JSON);
+        for (Param h : headerParams) rb.setHeader(h.k, Objects.toString(h.v));
+        if (rb.getHeader(CONTENT_TYPE) == null) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
+        if (rb.getHeader(ACCEPT) == null) rb.setHeader(ACCEPT, APPLICATION_JSON);
 
         return new MethodRequest(s, dispatcher, rb, expectedStatuses);
     }

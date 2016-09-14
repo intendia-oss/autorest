@@ -5,20 +5,20 @@ import javax.annotation.Nullable;
 /** Visit each resource gathering the metadata and end up calling {@link #as(Class, Class)}. */
 public interface ResourceVisitor {
 
+    /** Sets the http method. */
+    ResourceVisitor method(String method);
+
     /** Append paths, or set if the path is absolute. */
     ResourceVisitor path(Object... paths);
 
     /** Sets a query param. */
     ResourceVisitor param(String key, @Nullable Object value);
 
+    /** Sets a header param. */
+    ResourceVisitor header(String key, @Nullable Object value);
+
     /** Sets a from param. */
     ResourceVisitor form(String key, @Nullable Object value);
-
-    /** Sets the http method. */
-    ResourceVisitor method(String method);
-
-    /** Sets a http header. */
-    ResourceVisitor header(String key, String value);
 
     /** Sets the content data. */
     ResourceVisitor data(Object data);

@@ -11,10 +11,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
@@ -28,13 +27,15 @@ public class ResourceVisitorTest {
         ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
         when(visitor.as(List.class, String.class)).thenReturn(singletonList("done"));
         TestService service = new TestService_RestServiceModel(() -> visitor);
-        service.method("s", 1, "s", 1, asList(1, 2, 3));
+        service.method("s", 1, "s", 1, asList(1, 2, 3), "s", 1);
         InOrder inOrder = inOrder(visitor);
         inOrder.verify(visitor).path("a");
         inOrder.verify(visitor).path("b", "s", 1, "c");
-        inOrder.verify(visitor).param("s", "s");
-        inOrder.verify(visitor).param("i", 1);
-        inOrder.verify(visitor).param("is", asList(1, 2, 3));
+        inOrder.verify(visitor).param("qS", "s");
+        inOrder.verify(visitor).param("qI", 1);
+        inOrder.verify(visitor).param("qIs", asList(1, 2, 3));
+        inOrder.verify(visitor).header("hS", "s");
+        inOrder.verify(visitor).header("hI", 1);
         inOrder.verify(visitor).as(List.class, String.class);
         inOrder.verifyNoMoreInteractions();
     }
@@ -45,12 +46,10 @@ public class ResourceVisitorTest {
     }
 
     @AutoRestGwt @Path("a") public interface TestService {
-        @GET @Path("b/{s}/{i}/c") List<String> method(
-                @PathParam("s") String sPath,
-                @PathParam("i") int iPath,
-                @QueryParam("s") String sQuery,
-                @QueryParam("i") int iQuery,
-                @QueryParam("is") List<Integer> is);
+        @GET @Path("b/{pS}/{pI}/c") List<String> method(
+                @PathParam("pS") String pS, @PathParam("pI") int pI,
+                @QueryParam("qS") String qS, @QueryParam("qI") int qI, @QueryParam("qIs") List<Integer> qIs,
+                @HeaderParam("hS") String hS, @HeaderParam("hI") int hI);
 
         @GwtIncompatible Response gwtIncompatible();
     }
