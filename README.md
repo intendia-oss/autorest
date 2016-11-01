@@ -1,4 +1,8 @@
-# AutoREST for GWT [![Build Status](https://travis-ci.org/intendia-oss/autorest-gwt.svg)](https://travis-ci.org/intendia-oss/autorest-gwt) [![Join the chat at https://gitter.im/intendia-oss/autorest-gwt](https://badges.gitter.im/intendia-oss/autorest-gwt.svg)](https://gitter.im/intendia-oss/autorest-gwt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+# AutoREST for GWT 
+
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.intendia.gwt.autorest/autorest-parent/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.intendia.gwt.autorest/autorest-parent)
+[![Build Status](https://travis-ci.org/intendia-oss/autorest.svg)](https://travis-ci.org/intendia-oss/autorest)
+[![Join the chat at https://gitter.im/intendia-oss/autorest](https://badges.gitter.im/intendia-oss/autorest.svg)](https://gitter.im/intendia-oss/autorest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 *A source code generator for GWT compatible proxies from RESTful services (JSR311).*
 
@@ -102,7 +106,7 @@ This model map each resource method call all the way back to the root ``Resource
 create a new visitor, visits each resource until the end point is reached and ends wrapping the result
 into the expected type.
 
-![AutoREST evaluation flow](https://github.com/intendia-oss/autorest-gwt/raw/master/autorest-flow.gif)
+![AutoREST evaluation flow](https://github.com/intendia-oss/autorest/raw/master/autorest-flow.gif)
 
 Everything looks quite simple, isn't it? This is important, keep it simple. If
 at any point something is not supported you can always implements it yourserlf.
@@ -136,7 +140,7 @@ support ``T`` types where ``T`` is not a primitive (boxed or not) nor an array, 
 
 
 
- [dl]: https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.intendia.gwt.autorest%22%20AND%20a%3A%22autorest-gwt%22
+ [dl]: https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.intendia.gwt.autorest%22
  [snap]: https://oss.sonatype.org/content/repositories/snapshots/
  [jackson]: https://gist.github.com/ibaca/71be7c73d8619d11182807b871c5975c
  [rxjava]: https://github.com/ReactiveX/RxJava

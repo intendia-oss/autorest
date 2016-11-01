@@ -15,7 +15,7 @@
 
     <name>AutoRest</name>
     <description>A source code generator for GWT compatible proxies from RESTful services (JSR311).</description>
-    <url>https://github.com/intendia-oss/autorest-gwt</url>
+    <url>https://github.com/intendia-oss/autorest</url>
 
     <inceptionYear>2016</inceptionYear>
     <licenses>
@@ -33,15 +33,15 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/intendia-oss/autorest-gwt.git</connection>
-        <developerConnection>scm:git:git@github.com:intendia-oss/autorest-gwt.git</developerConnection>
-        <url>https://github.com/intendia-oss/autorest-gwt</url>
+        <connection>scm:git:https://github.com/intendia-oss/autorest.git</connection>
+        <developerConnection>scm:git:git@github.com:intendia-oss/autorest.git</developerConnection>
+        <url>https://github.com/intendia-oss/autorest</url>
         <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/intendia-oss/autorest-gwt/issues</url>
+        <url>https://github.com/intendia-oss/autorest/issues</url>
     </issueManagement>
 
     <prerequisites>
