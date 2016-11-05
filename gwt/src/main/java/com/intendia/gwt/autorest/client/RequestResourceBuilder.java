@@ -118,7 +118,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                 rb.setCallback(new RequestCallback() {
 
                     @Override public void onError(Request req, Throwable e) {
-                        s.onError(e);
+                        if (!(e instanceof CanceledRequestException)) s.onError(e);
                     }
 
                     @Override public void onResponseReceived(Request req, @Nullable Response res) {
@@ -146,7 +146,10 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                 });
                 s.setProducer(producer);
                 s.add(Subscriptions.create(() -> {
-                    if (request != null) request.cancel();
+                    if (request != null && request.isPending()) {
+                        request.cancel(); // fire canceled exception so decorated callbacks get notified
+                        rb.getCallback().onError(request, new CanceledRequestException(this, "CANCELED"));
+                    }
                 }));
                 request = d.call(rb);
             } catch (Throwable e) {
@@ -181,6 +184,10 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         private final int statusCode;
         public FailedStatusCodeException(MethodRequest mr, String m, int sc) { super(mr, m); this.statusCode = sc; }
         public int getStatusCode() { return statusCode; }
+    }
+
+    public static class CanceledRequestException extends RequestResponseException {
+        public CanceledRequestException(MethodRequest r, String m) { super(r, m); }
     }
 
     @JsMethod(namespace = "JSON")

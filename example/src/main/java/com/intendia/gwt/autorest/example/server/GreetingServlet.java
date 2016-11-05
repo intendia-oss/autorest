@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+// @WebServlet(name = "greeting-service", urlPatterns = "/example/api/*")
 public class GreetingServlet extends HttpServlet {
     private static final Logger log = Logger.getLogger(GreetingServlet.class.getName());
     private static final String helloWorldJson = "[{\"greeting\":\"Hello World\"}]";
