@@ -1,12 +1,14 @@
 package com.intendia.gwt.autorest.example.client;
 
-import static com.intendia.rxgwt.client.RxEvents.keyUp;
-import static com.intendia.rxgwt.client.RxEvents.valueChange;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.event.dom.client.HasKeyUpHandlers;
+import com.google.gwt.event.dom.client.KeyUpEvent;
+import com.google.gwt.event.logical.shared.HasValueChangeHandlers;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.http.client.Request;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
@@ -17,10 +19,13 @@ import com.google.gwt.user.client.ui.IsWidget;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.TextBox;
+import com.google.web.bindery.event.shared.HandlerRegistration;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import rx.Observable;
+import rx.Subscriber;
 import rx.functions.Action1;
+import rx.subscriptions.Subscriptions;
 
 public class ExampleEntryPoint implements EntryPoint {
     private Action1<Throwable> err = e -> GWT.log("exception: " + e, e);
@@ -74,4 +79,16 @@ public class ExampleEntryPoint implements EntryPoint {
     private static void append(String text) { append(new Label(text)); }
 
     private static <T extends IsWidget> T append(T w) { RootPanel.get().add(w); return w; }
+
+    private static Observable<KeyUpEvent> keyUp(HasKeyUpHandlers source) {
+        return Observable.create(s -> register(s, source.addKeyUpHandler(s::onNext)));
+    }
+
+    public static <T> Observable<ValueChangeEvent<T>> valueChange(HasValueChangeHandlers<T> source) {
+        return Observable.create(s -> register(s, source.addValueChangeHandler(s::onNext)));
+    }
+
+    private static void register(Subscriber s, HandlerRegistration handlerRegistration) {
+        s.add(Subscriptions.create(handlerRegistration::removeHandler));
+    }
 }

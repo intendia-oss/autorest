@@ -64,11 +64,6 @@
             <groupId>com.google.gwt</groupId>
             <artifactId>gwt-dev</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.intendia.gwt</groupId>
-            <artifactId>rxgwt</artifactId>
-            <version>0.1-SNAPSHOT</version>
-        </dependency>
     </dependencies>
 
     <build>
