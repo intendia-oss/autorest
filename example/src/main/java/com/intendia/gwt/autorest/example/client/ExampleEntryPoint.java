@@ -1,18 +1,11 @@
 package com.intendia.gwt.autorest.example.client;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.event.dom.client.HasKeyUpHandlers;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.logical.shared.HasValueChangeHandlers;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestCallback;
-import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.Response;
-import com.google.gwt.user.client.ui.FlowPanel;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.IsWidget;
 import com.google.gwt.user.client.ui.Label;
@@ -31,27 +24,9 @@ public class ExampleEntryPoint implements EntryPoint {
 
     public void onModuleLoad() {
         TextBox name = append(new TextBox());
-        FlowPanel status = append(new FlowPanel());
         HTML out = append(new HTML());
 
-        ResourceVisitor.Supplier getApi = () -> new RequestResourceBuilder()
-                .dispatcher(rb -> {
-                    Label info = new Label(rb.getUrl() + " (PENDING)"); status.add(info);
-                    Runnable hide = () -> Observable.timer(1, SECONDS).subscribe(n -> status.remove(info));
-                    RequestCallback inner = rb.getCallback();
-                    rb.setCallback(new RequestCallback() {
-                        @Override public void onResponseReceived(Request request, Response response) {
-                            info.setText(rb.getUrl() + " (RECEIVED)"); hide.run();
-                            inner.onResponseReceived(request, response);
-                        }
-                        @Override public void onError(Request request, Throwable exception) {
-                            info.setText(rb.getUrl() + "(ERROR): " + exception); hide.run();
-                            inner.onError(request, exception);
-                        }
-                    });
-                    try { return rb.send(); } catch (RequestException e) { throw new RuntimeException(e); }
-                })
-                .path(GWT.getModuleBaseURL(), "api");
+        ResourceVisitor.Supplier getApi = () -> new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api");
         ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok"));
 
         Observable.merge(valueChange(name), keyUp(name)).map(e -> name.getValue())

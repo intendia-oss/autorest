@@ -1,44 +1,39 @@
 package com.intendia.gwt.autorest.client;
 
-import static com.google.gwt.http.client.URL.encodeQueryString;
 import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
 import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.MULTIPART_FORM_DATA;
 
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestBuilder;
-import com.google.gwt.http.client.RequestCallback;
-import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.Response;
-import com.google.gwt.http.client.URL;
+import elemental2.core.Global;
+import elemental2.dom.FormData;
+import elemental2.dom.XMLHttpRequest;
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
+import io.reactivex.functions.Consumer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import jsinterop.annotations.JsMethod;
+import jsinterop.base.Js;
 
 @SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
-    private static final Function<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
+    private static final Consumer<XMLHttpRequest> DEFAULT_DISPATCHER = request -> { /* no op */ };
 
-    private Function<Integer, Boolean> expectedStatuses;
-    private Function<RequestBuilder, Request> dispatcher;
-
-    public RequestResourceBuilder() {
-        super();
-        this.expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
-        this.dispatcher = DEFAULT_DISPATCHER;
-    }
+    private Function<Integer, Boolean> expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
+    private Consumer<XMLHttpRequest> dispatcher = DEFAULT_DISPATCHER;
 
     public String query() {
         String q = "";
@@ -46,17 +41,15 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         return q.isEmpty() ? "" : "?" + q;
     }
 
-    private String encode(String str) {
-        return encodeQueryString(str);
+    private String encode(String decodedURLComponent) {
+        return Global.encodeURIComponent(decodedURLComponent).replaceAll("%20", "+");
     }
 
     public String uri() {
-        String uri = "";
-        for (String path : paths) uri += path;
-        return URL.encode(uri) + query();
+        return Global.encodeURI(paths.stream().collect(Collectors.joining())) + query();
     }
 
-    public ResourceVisitor dispatcher(Function<RequestBuilder, Request> dispatcher) {
+    public RequestResourceBuilder dispatcher(Consumer<XMLHttpRequest> dispatcher) {
         this.dispatcher = dispatcher;
         return this;
     }
@@ -66,7 +59,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
      * then the request is considered to have failed.  Defaults to accepting 200,201,204. If set to -1 then any status
      * code is considered a success.
      */
-    public ResourceVisitor expect(Integer... statuses) {
+    public RequestResourceBuilder expect(Integer... statuses) {
         if (statuses.length == 1 && statuses[0] < 0) expectedStatuses = status -> true;
         else expectedStatuses = asList(statuses)::contains;
         return this;
@@ -98,91 +91,55 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         throw new UnsupportedOperationException("unsupported type " + container);
     }
 
-    private @Nullable <T> T decode(Context ctx) {
+    private @Nullable <T> T decode(XMLHttpRequest ctx) {
         try {
-            String text = requireNonNull(ctx.res).getText();
-            return text == null || text.isEmpty() ? null : parse(text);
+            String text = ctx.response.asString();
+            return text == null || text.isEmpty() ? null : Js.cast(Global.JSON.parse(text));
         } catch (Throwable e) {
-            throw new ResponseFormatException(ctx, "Parsing response error", e);
+            throw new RequestResponseException.ResponseFormatException("Parsing response error", e);
         }
     }
 
-    private Single<Context> request() {
+    public Single<XMLHttpRequest> request() {
         return Single.create(em -> {
-            final Context ctx = new Context();
+            String uri = uri();
+            XMLHttpRequest xhr = new XMLHttpRequest();
+            xhr.open(method, uri);
+
+            Map<String, String> headers = new HashMap<>();
+            for (Param h : headerParams) headers.put(h.k, Objects.toString(h.v));
+            for (Map.Entry<String, String> h : headers.entrySet()) xhr.setRequestHeader(h.getKey(), h.getValue());
+
             try {
-                MyRequestBuilder rb = new MyRequestBuilder(method, uri());
-                rb.setRequestData(data == null ? null : stringify(data));
-                for (Param h : headerParams) rb.setHeader(h.k, Objects.toString(h.v));
-                if (rb.getHeader(CONTENT_TYPE) == null) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
-                if (rb.getHeader(ACCEPT) == null) rb.setHeader(ACCEPT, APPLICATION_JSON);
-                rb.setCallback(new RequestCallback() {
-                    @Override public void onResponseReceived(Request req, Response res) {
-                        ctx.res = res;
-                        if (isExpected(rb.getUrl(), res.getStatusCode())) {
-                            em.onSuccess(ctx);
-                        } else {
-                            em.onError(new FailedStatusCodeException(ctx, res.getStatusText(), res.getStatusCode()));
-                        }
+                xhr.onreadystatechange = evt -> {
+                    if (em.isDisposed()) return null;
+                    if (xhr.readyState == XMLHttpRequest.DONE) {
+                        if (isExpected(uri, xhr.status)) em.onSuccess(xhr);
+                        else em.tryOnError(
+                                new RequestResponseException.FailedStatusCodeException(xhr.status, xhr.statusText));
                     }
-                    @Override public void onError(Request req1, Throwable e) {
-                        if (!(e instanceof CanceledRequestException)) em.onError(e);
-                    }
-                });
+                    return null;
+                };
                 em.setCancellable(() -> {
-                    if (ctx.req != null && ctx.req.isPending()) {
-                        ctx.req.cancel(); // fire canceled exception so decorated callbacks get notified
-                        rb.getCallback().onError(ctx.req, new CanceledRequestException(ctx, "CANCELED"));
-                    }
+                    if (xhr.readyState != XMLHttpRequest.DONE) xhr.abort();
                 });
-                ctx.req = dispatcher.apply(rb);
+
+                dispatcher.accept(xhr);
+
+                if (!formParams.isEmpty()) {
+                    xhr.setRequestHeader(CONTENT_TYPE, MULTIPART_FORM_DATA);
+                    FormData form = new FormData();
+                    formParams.forEach(p -> form.append(p.k, Objects.toString(p.v)));
+                    xhr.send(form);
+                } else {
+                    if (!headers.containsKey(CONTENT_TYPE)) xhr.setRequestHeader(CONTENT_TYPE, APPLICATION_JSON);
+                    if (!headers.containsKey(ACCEPT)) xhr.setRequestHeader(ACCEPT, APPLICATION_JSON);
+                    if (data != null) xhr.send(Global.JSON.stringify(data));
+                    else xhr.send();
+                }
             } catch (Throwable e) {
-                em.onError(new RequestResponseException(ctx, "Request '" + uri() + "' error", e));
+                em.tryOnError(new RequestResponseException("", e));
             }
         });
-    }
-
-    private static final class Context {
-        @Nullable Request req;
-        @Nullable Response res;
-    }
-
-    public static class RequestResponseException extends RuntimeException {
-        private final Context req;
-        public RequestResponseException(Context req, String msg, @Nullable Throwable c) {
-            super(msg, c); this.req = req;
-        }
-        public @Nullable Request getRequest() { return req.req; }
-        public @Nullable Response getResponse() { return req.res; }
-    }
-
-    public static class ResponseFormatException extends RequestResponseException {
-        public ResponseFormatException(Context req, String msg, Throwable e) { super(req, msg, e); }
-    }
-
-    public static class FailedStatusCodeException extends RequestResponseException {
-        private final int sc;
-        public FailedStatusCodeException(Context req, String m, int sc) { super(req, m, null); this.sc = sc; }
-        public int getStatusCode() { return sc; }
-    }
-
-    public static class CanceledRequestException extends RequestResponseException {
-        public CanceledRequestException(Context req, String m) { super(req, m, null); }
-    }
-
-    @JsMethod(namespace = "JSON")
-    private static native <T> T parse(String text);
-
-    @JsMethod(namespace = "JSON")
-    private static native <T> T stringify(Object value);
-
-    private static class MyRequestBuilder extends RequestBuilder {
-        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, url); }
-    }
-
-    private static class MyDispatcher implements Function<RequestBuilder, Request> {
-        @Override public Request apply(RequestBuilder requestBuilder) {
-            try { return requestBuilder.send(); } catch (RequestException e) { throw new RuntimeException(e); }
-        }
     }
 }
