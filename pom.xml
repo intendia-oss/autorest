@@ -110,6 +110,9 @@
                     <artifactId>gwt-maven-plugin</artifactId>
                     <version>1.0-rc-6</version>
                     <extensions>true</extensions>
+                    <configuration>
+                        <failOnError>true</failOnError>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>

@@ -58,11 +58,13 @@ public class XhrResourceBuilder extends CollectorResourceVisitor {
     }
 
     public <T> Observable<T> observe() {
-        return Observable.<T[]>create(MethodRequest::new).flatMapIterable(o -> o == null ? emptyList() : asList(o));
+        //noinspection Convert2MethodRef
+        return Observable.<T[]>create(s -> new MethodRequest(s)).flatMapIterable(o -> o == null ? emptyList() : asList(o));
     }
 
     public <T> Single<T> single() {
-        return Observable.<T>create(MethodRequest::new).toSingle();
+        //noinspection Convert2MethodRef
+        return Observable.<T>create(s -> new MethodRequest(s)).toSingle();
     }
 
     public String query() {

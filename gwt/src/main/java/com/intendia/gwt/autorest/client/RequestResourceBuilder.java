@@ -51,13 +51,13 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
 
     public <T> Observable<T> observe() {
         //noinspection Convert2MethodRef
-        return Observable.<T[]>create((s) -> createRequest(s))
+        return Observable.<T[]>create(s -> createRequest(s))
                 .flatMapIterable(o -> o == null ? singleton(null) : asList(o));
     }
 
     public <T> Single<T> single() {
         //noinspection Convert2MethodRef
-        return Observable.<T>create((s) -> createRequest(s)).toSingle();
+        return Observable.<T>create(s -> createRequest(s)).toSingle();
     }
 
     public String query() {
