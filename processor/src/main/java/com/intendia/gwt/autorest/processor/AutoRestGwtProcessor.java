@@ -56,7 +56,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
     @Override public Set<String> getSupportedOptions() { return singleton("debug"); }
 
-    @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt.class.getName()); }
+    @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt.class.getCanonicalName()); }
 
     @Override public SourceVersion getSupportedSourceVersion() { return SourceVersion.latestSupported(); }
 
