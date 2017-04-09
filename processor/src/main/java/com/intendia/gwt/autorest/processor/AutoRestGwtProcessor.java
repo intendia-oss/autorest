@@ -3,6 +3,7 @@ package com.intendia.gwt.autorest.processor;
 import static com.google.auto.common.MoreTypes.asElement;
 import static java.util.Collections.singleton;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.toSet;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
@@ -42,6 +43,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.HeaderParam;
@@ -49,14 +51,17 @@ import javax.ws.rs.HttpMethod;
 import javax.ws.rs.MatrixParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 
 public class AutoRestGwtProcessor extends AbstractProcessor {
-    private Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(Collectors.toSet());
+    private static final Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(toSet());
+    private static final String[] EMPTY = {};
+    private static final String AutoRestGwt = AutoRestGwt.class.getCanonicalName();
 
     @Override public Set<String> getSupportedOptions() { return singleton("debug"); }
 
-    @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt.class.getCanonicalName()); }
+    @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt); }
 
     @Override public SourceVersion getSupportedSourceVersion() { return SourceVersion.latestSupported(); }
 
@@ -78,6 +83,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
     private void processRestService(TypeElement restService) throws Exception {
         String rsPath = restService.getAnnotation(Path.class).value();
+        String[] produces = ofNullable(restService.getAnnotation(Produces.class)).map(Produces::value).orElse(EMPTY);
+        String[] consumes = ofNullable(restService.getAnnotation(Consumes.class)).map(Consumes::value).orElse(EMPTY);
 
         ClassName rsName = ClassName.get(restService);
         log("rest service interface: " + rsName);
@@ -132,6 +139,14 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                                 .findFirst().map(VariableElement::getSimpleName).map(Object::toString)
                                 .orElse("null /* path param " + path + " does not match any argument! */"))
                         .collect(Collectors.joining(", ")));
+                // produces
+                builder.add(".produces($L)", Arrays
+                        .stream(ofNullable(method.getAnnotation(Produces.class)).map(Produces::value).orElse(produces))
+                        .map(str -> "\"" + str + "\"").collect(Collectors.joining(", ")));
+                // consumes
+                builder.add(".consumes($L)", Arrays
+                        .stream(ofNullable(method.getAnnotation(Consumes.class)).map(Consumes::value).orElse(consumes))
+                        .map(str -> "\"" + str + "\"").collect(Collectors.joining(", ")));
                 // query params
                 method.getParameters().stream().filter(p -> p.getAnnotation(QueryParam.class) != null).forEach(p ->
                         builder.add(".param($S, $L)", p.getAnnotation(QueryParam.class).value(), p.getSimpleName()));

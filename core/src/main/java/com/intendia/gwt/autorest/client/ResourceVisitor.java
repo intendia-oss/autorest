@@ -11,6 +11,12 @@ public interface ResourceVisitor {
     /** Append paths, or set if the path is absolute. */
     ResourceVisitor path(Object... paths);
 
+    /** Sets the produced media-type. */
+    ResourceVisitor produces(String... produces);
+
+    /** Sets the consumed media-type. */
+    ResourceVisitor consumes(String... consumes);
+
     /** Sets a query param. */
     ResourceVisitor param(String key, @Nullable Object value);
 

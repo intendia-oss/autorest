@@ -32,6 +32,8 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     protected List<Param> headerParams = new ArrayList<>();
     protected List<Param> formParams = new ArrayList<>();
     protected String method = HttpMethod.GET;
+    protected String produces[] = { "application/json" };
+    protected String consumes[] = { "application/json" };
     protected Object data = null;
 
     @Override public ResourceVisitor method(String method) {
@@ -49,6 +51,16 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
         if (path.endsWith("/")) path = path.substring(0, path.length() - 1); // strip off trailing slash
         if (path.matches(ABSOLUTE_PATH)) this.paths = new ArrayList<>(singleton(path)); // reset current path
         else this.paths.add(path.startsWith("/") ? path : "/" + path);
+        return this;
+    }
+
+    @Override public ResourceVisitor produces(String... produces) {
+        if (produces.length > 0 /*0 means undefined, so do not override default*/) this.produces = produces;
+        return this;
+    }
+
+    @Override public ResourceVisitor consumes(String... consumes) {
+        if (consumes.length > 0 /*0 means undefined, so do not override default*/) this.consumes = consumes;
         return this;
     }
 

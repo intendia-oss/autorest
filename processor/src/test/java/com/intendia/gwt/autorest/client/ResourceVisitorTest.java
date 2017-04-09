@@ -12,10 +12,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
@@ -31,6 +33,8 @@ public class ResourceVisitorTest {
         InOrder inOrder = inOrder(visitor);
         inOrder.verify(visitor).path("a");
         inOrder.verify(visitor).path("b", "s", 1, "c");
+        inOrder.verify(visitor).produces("application/json");
+        inOrder.verify(visitor).consumes("application/json");
         inOrder.verify(visitor).param("qS", "s");
         inOrder.verify(visitor).param("qI", 1);
         inOrder.verify(visitor).param("qIs", asList(1, 2, 3));
@@ -45,7 +49,9 @@ public class ResourceVisitorTest {
         service.gwtIncompatible();
     }
 
-    @AutoRestGwt @Path("a") public interface TestService {
+    @AutoRestGwt @Path("a") @Produces("*/*") @Consumes("*/*")
+    public interface TestService {
+        @Produces("application/json") @Consumes("application/json")
         @GET @Path("b/{pS}/{pI}/c") List<String> method(
                 @PathParam("pS") String pS, @PathParam("pI") int pI,
                 @QueryParam("qS") String qS, @QueryParam("qI") int qI, @QueryParam("qIs") List<Integer> qIs,
