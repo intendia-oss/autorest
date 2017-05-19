@@ -8,7 +8,6 @@
     </parent>
     <artifactId>autorest-gwt</artifactId>
     <packaging>gwt-lib</packaging>
-    <name>AutoRest :: GWT</name>
 
     <dependencies>
         <dependency>
@@ -28,16 +27,10 @@
             <version>${rxjava-gwt.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.gwt</groupId>
-            <artifactId>gwt-user</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.gwt</groupId>
-            <artifactId>gwt-dev</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.gwt</groupId>
-            <artifactId>gwt-elemental</artifactId>
+            <groupId>com.intendia.gwt</groupId>
+            <artifactId>rxjava-gwt</artifactId>
+            <version>${rxjava-gwt.version}</version>
+            <classifier>sources</classifier>
         </dependency>
         <dependency>
             <groupId>javax.ws.rs</groupId>
@@ -50,6 +43,16 @@
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.gwt</groupId>
+            <artifactId>gwt-user</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.gwt</groupId>
+            <artifactId>gwt-dev</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

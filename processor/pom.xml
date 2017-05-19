@@ -8,7 +8,6 @@
     </parent>
     <artifactId>autorest-processor</artifactId>
     <packaging>jar</packaging>
-    <name>AutoRest :: Processor</name>
 
     <dependencies>
         <dependency>
@@ -36,7 +35,7 @@
         <dependency>
             <groupId>com.squareup</groupId>
             <artifactId>javapoet</artifactId>
-            <version>1.7.0</version>
+            <version>1.8.0</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

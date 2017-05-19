@@ -19,6 +19,7 @@ import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import com.intendia.gwt.autorest.client.RestServiceModel;
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
@@ -28,6 +29,7 @@ import com.squareup.javapoet.TypeSpec;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -116,8 +118,10 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         for (ExecutableElement method : methods) {
             String methodName = method.getSimpleName().toString();
 
-            if (isIncompatible(method)) {
+            Optional<? extends AnnotationMirror> incompatible = isIncompatible(method);
+            if (incompatible.isPresent()) {
                 modelTypeBuilder.addMethod(MethodSpec.overriding(method)
+                        .addAnnotation(AnnotationSpec.get(incompatible.get()))
                         .addStatement("throw new $T(\"$L\")", UnsupportedOperationException.class, methodName)
                         .build());
                 continue;
@@ -192,8 +196,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 && a.getAnnotation(QueryParam.class) == null;
     }
 
-    private boolean isIncompatible(ExecutableElement method) {
-        return method.getAnnotationMirrors().stream().anyMatch(this::isIncompatible);
+    private Optional<? extends AnnotationMirror> isIncompatible(ExecutableElement method) {
+        return method.getAnnotationMirrors().stream().filter(this::isIncompatible).findAny();
     }
 
     private boolean isIncompatible(AnnotationMirror a) {

@@ -8,7 +8,6 @@
     </parent>
     <artifactId>autorest-gwt-example</artifactId>
     <packaging>gwt-app</packaging>
-    <name>AutoRest :: Example</name>
 
     <dependencyManagement>
         <dependencies>
@@ -40,16 +39,6 @@
             <version>${project.version}</version>
             <scope>provided</scope>
             <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>jsr311-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>jsr311-api</artifactId>
-            <version>${jsr311.version}</version>
-            <classifier>sources</classifier>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
