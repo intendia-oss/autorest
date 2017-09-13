@@ -20,3 +20,4 @@ www-test/
 *.swo
 *.log
 *.launch
+dependency-reduced-pom.xml
