@@ -4,6 +4,7 @@ import javax.annotation.Nullable;
 
 /** Visit each resource gathering the metadata and end up calling {@link #as(Class, Class)}. */
 public interface ResourceVisitor {
+//    public final Metadata metadata = new Metadata();
 
     /** Sets the http method. */
     ResourceVisitor method(String method);
@@ -32,7 +33,7 @@ public interface ResourceVisitor {
     /** Wrap the current resource state into a {@code container}. */
     <T> T as(Class<? super T> container, Class<?> type);
 
-    interface Supplier {
-        ResourceVisitor get();
+    interface Factory {
+        ResourceVisitor create(Metadata data);
     }
 }

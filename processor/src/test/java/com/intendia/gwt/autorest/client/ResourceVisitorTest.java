@@ -29,7 +29,7 @@ public class ResourceVisitorTest {
         ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
         when(visitor.as(List.class, String.class)).thenReturn(singletonList("done"));
         TestService service = new TestService_RestServiceModel(() -> visitor);
-        service.method("s", 1, "s", 1, asList(1, 2, 3), "s", 1);
+        service.foo("s", 1, "s", 1, asList(1, 2, 3), "s", 1);
         InOrder inOrder = inOrder(visitor);
         inOrder.verify(visitor).path("a");
         inOrder.verify(visitor).path("b", "s", 1, "c");
@@ -52,7 +52,7 @@ public class ResourceVisitorTest {
     @AutoRestGwt @Path("a") @Produces("*/*") @Consumes("*/*")
     public interface TestService {
         @Produces("application/json") @Consumes("application/json")
-        @GET @Path("b/{pS}/{pI}/c") List<String> method(
+        @GET @Path("b/{pS}/{pI}/c") List<String> foo(
                 @PathParam("pS") String pS, @PathParam("pI") int pI,
                 @QueryParam("qS") String qS, @QueryParam("qI") int qI, @QueryParam("qIs") List<Integer> qIs,
                 @HeaderParam("hS") String hS, @HeaderParam("hI") int hI);
@@ -62,4 +62,9 @@ public class ResourceVisitorTest {
 
     @Retention(RetentionPolicy.CLASS) @Target(ElementType.METHOD)
     public @interface GwtIncompatible {}
+
+    @Retention(RetentionPolicy.CLASS) @Target({ElementType.TYPE, ElementType.METHOD})
+    public @interface Foo {
+        String value();
+    }
 }
