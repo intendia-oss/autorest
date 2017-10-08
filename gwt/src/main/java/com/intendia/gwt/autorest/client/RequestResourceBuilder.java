@@ -3,7 +3,7 @@ package com.intendia.gwt.autorest.client;
 import static com.google.gwt.http.client.URL.encodeQueryString;
 import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
+import static java.util.Objects.requireNonNull;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -14,23 +14,21 @@ import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.URL;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import jsinterop.annotations.JsMethod;
+import rx.Completable;
 import rx.Observable;
 import rx.Single;
-import rx.Subscriber;
 import rx.annotations.Experimental;
 import rx.functions.Func1;
-import rx.internal.producers.SingleDelayedProducer;
 import rx.subscriptions.Subscriptions;
 
 @Experimental @SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
-    private static final Logger log = Logger.getLogger(RequestResourceBuilder.class.getName());
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
     private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
 
@@ -41,23 +39,6 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         super();
         this.expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
         this.dispatcher = DEFAULT_DISPATCHER;
-    }
-
-    @Override @SuppressWarnings("unchecked") public <T> T as(Class<? super T> container, Class<?> type) {
-        if (Single.class.equals(container)) return (T) single();
-        if (Observable.class.equals(container)) return (T) observe();
-        throw new UnsupportedOperationException("unsupported type " + container);
-    }
-
-    public <T> Observable<T> observe() {
-        //noinspection Convert2MethodRef
-        return Observable.<T[]>create(s -> createRequest(s))
-                .flatMapIterable(o -> o == null ? singleton(null) : asList(o));
-    }
-
-    public <T> Single<T> single() {
-        //noinspection Convert2MethodRef
-        return Observable.<T>create(s -> createRequest(s)).toSingle();
     }
 
     public String query() {
@@ -76,17 +57,6 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         return URL.encode(uri) + query();
     }
 
-    private <T> MethodRequest createRequest(Subscriber<T> s) {
-        MyRequestBuilder rb = new MyRequestBuilder(method, uri());
-
-        rb.setRequestData(data == null ? null : stringify(data));
-        for (Param h : headerParams) rb.setHeader(h.k, Objects.toString(h.v));
-        if (rb.getHeader(CONTENT_TYPE) == null) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
-        if (rb.getHeader(ACCEPT) == null) rb.setHeader(ACCEPT, APPLICATION_JSON);
-
-        return new MethodRequest(s, dispatcher, rb, expectedStatuses);
-    }
-
     public ResourceVisitor dispatcher(Func1<RequestBuilder, Request> dispatcher) {
         this.dispatcher = dispatcher;
         return this;
@@ -97,97 +67,102 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
      * then the request is considered to have failed.  Defaults to accepting 200,201,204. If set to -1 then any status
      * code is considered a success.
      */
-    public ResourceVisitor expect(int... statuses) {
+    public ResourceVisitor expect(Integer... statuses) {
         if (statuses.length == 1 && statuses[0] < 0) expectedStatuses = status -> true;
         else expectedStatuses = asList(statuses)::contains;
         return this;
     }
 
-    private static class MethodRequest {
-        private final String url;
-        private final Func1<Integer, Boolean> expectedStatuses;
-        public @Nullable Response response;
-        public @Nullable Request request;
+    /**
+     * Local file-system (file://) does not return any status codes. Therefore - if we read from the file-system we
+     * accept all codes. This is for instance relevant when developing a PhoneGap application.
+     */
+    private boolean isExpected(String url, int status) {
+        return url.startsWith("file") || expectedStatuses.call(status);
+    }
 
-        public <T> MethodRequest(Subscriber<T> s, Func1<RequestBuilder, Request> d, MyRequestBuilder rb,
-                Func1<Integer, Boolean> expectedStatuses) {
-            this.expectedStatuses = expectedStatuses;
-            url = rb.getUrl();
-            SingleDelayedProducer<T> producer = new SingleDelayedProducer<>(s);
+    @SuppressWarnings("unchecked")
+    @Override public <T> T as(Class<? super T> container, Class<?> type) {
+        if (Completable.class.equals(container)) return (T) request().toCompletable();
+        if (Single.class.equals(container)) return (T) request().map(this::decode);
+        if (Observable.class.equals(container)) return (T) request().toObservable().flatMapIterable(ctx -> {
+            Object[] decode = decode(ctx); return decode == null ? Collections.emptyList() : Arrays.asList(decode);
+        });
+        throw new UnsupportedOperationException("unsupported type " + container);
+    }
+
+    private @Nullable <T> T decode(Context ctx) {
+        try {
+            String text = requireNonNull(ctx.res).getText();
+            return text == null || text.isEmpty() ? null : parse(text);
+        } catch (Throwable e) {
+            throw new ResponseFormatException(ctx, "Parsing response error", e);
+        }
+    }
+
+    private Single<Context> request() {
+        return Single.create(em -> {
+            final Context ctx = new Context();
             try {
+                MyRequestBuilder rb = new MyRequestBuilder(method, uri());
+                rb.setRequestData(data == null ? null : stringify(data));
+                for (Param h : headerParams) rb.setHeader(h.k, Objects.toString(h.v));
+                if (rb.getHeader(CONTENT_TYPE) == null) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
+                if (rb.getHeader(ACCEPT) == null) rb.setHeader(ACCEPT, APPLICATION_JSON);
                 rb.setCallback(new RequestCallback() {
-
-                    @Override public void onError(Request req, Throwable e) {
-                        if (!(e instanceof CanceledRequestException)) s.onError(e);
-                    }
-
-                    @Override public void onResponseReceived(Request req, @Nullable Response res) {
-                        MethodRequest mr = MethodRequest.this;
-                        mr.response = res;
+                    @Override public void onResponseReceived(Request request, @Nullable Response res) {
+                        ctx.res = res;
                         if (res == null) {
-                            s.onError(new FailedStatusCodeException(mr, "TIMEOUT", 999));
-                        } else if (!isExpected(res.getStatusCode())) {
-                            s.onError(new FailedStatusCodeException(mr, res.getStatusText(), res.getStatusCode()));
+                            em.onError(new FailedStatusCodeException(ctx, "TIMEOUT", 999));
+                        } else if (!isExpected(rb.getUrl(), res.getStatusCode())) {
+                            em.onError(new FailedStatusCodeException(ctx, res.getStatusText(), res.getStatusCode()));
                         } else {
-                            try {
-                                log.fine("Received http response for request: " + rb.getUrl());
-                                String text = res.getText();
-                                if (text == null || text.isEmpty()) {
-                                    producer.setValue(null);
-                                } else {
-                                    producer.setValue(parse(text));
-                                }
-                            } catch (Throwable e) {
-                                log.log(Level.FINE, "Could not parse response: " + e, e);
-                                s.onError(new ResponseFormatException(mr, e));
-                            }
+                            em.onSuccess(ctx);
                         }
                     }
+                    @Override public void onError(Request req1, Throwable e) {
+                        if (!(e instanceof CanceledRequestException)) em.onError(e);
+                    }
                 });
-                s.setProducer(producer);
-                s.add(Subscriptions.create(() -> {
-                    if (request != null && request.isPending()) {
-                        request.cancel(); // fire canceled exception so decorated callbacks get notified
-                        rb.getCallback().onError(request, new CanceledRequestException(this, "CANCELED"));
+                em.add(Subscriptions.create(() -> {
+                    if (ctx.req != null && ctx.req.isPending()) {
+                        ctx.req.cancel(); // fire canceled exception so decorated callbacks get notified
+                        rb.getCallback().onError(ctx.req, new CanceledRequestException(ctx, "CANCELED"));
                     }
                 }));
-                request = d.call(rb);
+                ctx.req = dispatcher.call(rb);
             } catch (Throwable e) {
-                log.log(Level.FINE, "Received http error for: " + rb.getUrl(), e);
-                s.onError(new RequestResponseException(this, e));
+                em.onError(new RequestResponseException(ctx, "Request '" + uri() + "' error", e));
             }
-        }
+        });
+    }
 
-        /**
-         * Local file-system (file://) does not return any status codes. Therefore - if we read from the file-system we
-         * accept all codes. This is for instance relevant when developing a PhoneGap application.
-         */
-        private boolean isExpected(int status) {
-            return url.startsWith("file") || expectedStatuses.call(status);
-        }
-
+    private static final class Context {
+        @Nullable Request req;
+        @Nullable Response res;
     }
 
     public static class RequestResponseException extends RuntimeException {
-        private final MethodRequest mr;
-        public RequestResponseException(MethodRequest r, String m) { super(m); this.mr = r; }
-        public RequestResponseException(MethodRequest r, Throwable c) { super(c); this.mr = r; }
-        public @Nullable Request getRequest() { return mr.request; }
-        public @Nullable Response getResponse() { return mr.response; }
+        private final Context req;
+        public RequestResponseException(Context req, String msg, @Nullable Throwable c) {
+            super(msg, c); this.req = req;
+        }
+        public @Nullable Request getRequest() { return req.req; }
+        public @Nullable Response getResponse() { return req.res; }
     }
 
     public static class ResponseFormatException extends RequestResponseException {
-        public ResponseFormatException(MethodRequest mr, Throwable e) { super(mr, e); }
+        public ResponseFormatException(Context req, String msg, Throwable e) { super(req, msg, e); }
     }
 
     public static class FailedStatusCodeException extends RequestResponseException {
-        private final int statusCode;
-        public FailedStatusCodeException(MethodRequest mr, String m, int sc) { super(mr, m); this.statusCode = sc; }
-        public int getStatusCode() { return statusCode; }
+        private final int sc;
+        public FailedStatusCodeException(Context req, String m, int sc) { super(req, m, null); this.sc = sc; }
+        public int getStatusCode() { return sc; }
     }
 
     public static class CanceledRequestException extends RequestResponseException {
-        public CanceledRequestException(MethodRequest r, String m) { super(r, m); }
+        public CanceledRequestException(Context req, String m) { super(req, m, null); }
     }
 
     @JsMethod(namespace = "JSON")
