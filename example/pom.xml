@@ -29,6 +29,12 @@
             <type>gwt-lib</type>
         </dependency>
         <dependency>
+            <!-- just here to make IntelliJ happy -->
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-gwt</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.intendia.gwt.autorest</groupId>
             <artifactId>autorest-processor</artifactId>
             <version>${project.version}</version>
