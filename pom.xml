@@ -8,7 +8,7 @@
     </parent>
     <groupId>com.intendia.gwt.autorest</groupId>
     <artifactId>autorest-parent</artifactId>
-    <version>0.7</version>
+    <version>HEAD-SNAPSHOT</version>
     <packaging>pom</packaging>
     <description>A source code generator for GWT compatible proxies from RESTful services (JSR311).</description>
     <url>https://github.com/intendia-oss/autorest</url>
