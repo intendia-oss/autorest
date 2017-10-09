@@ -110,14 +110,12 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                 if (rb.getHeader(CONTENT_TYPE) == null) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
                 if (rb.getHeader(ACCEPT) == null) rb.setHeader(ACCEPT, APPLICATION_JSON);
                 rb.setCallback(new RequestCallback() {
-                    @Override public void onResponseReceived(Request request, @Nullable Response res) {
+                    @Override public void onResponseReceived(Request req, Response res) {
                         ctx.res = res;
-                        if (res == null) {
-                            em.onError(new FailedStatusCodeException(ctx, "TIMEOUT", 999));
-                        } else if (!isExpected(rb.getUrl(), res.getStatusCode())) {
-                            em.onError(new FailedStatusCodeException(ctx, res.getStatusText(), res.getStatusCode()));
-                        } else {
+                        if (isExpected(rb.getUrl(), res.getStatusCode())) {
                             em.onSuccess(ctx);
+                        } else {
+                            em.onError(new FailedStatusCodeException(ctx, res.getStatusText(), res.getStatusCode()));
                         }
                     }
                     @Override public void onError(Request req1, Throwable e) {
