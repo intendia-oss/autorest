@@ -4,5 +4,7 @@
     <inherits name="com.google.gwt.core.Core"/>
     <inherits name="com.google.gwt.http.HTTP"/>
     <inherits name="rx.Rx"/>
+    <!--<inherits name="com.progressoft.brix.domino.gwtjackson.GwtJacksonApt"/>-->
+
     <source path="client"/>
 </module>

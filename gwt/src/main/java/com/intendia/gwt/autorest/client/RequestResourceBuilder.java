@@ -1,5 +1,19 @@
 package com.intendia.gwt.autorest.client;
 
+import com.google.gwt.http.client.*;
+import rx.Completable;
+import rx.Observable;
+import rx.Single;
+import rx.annotations.Experimental;
+import rx.functions.Func1;
+import rx.subscriptions.Subscriptions;
+
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
 import static com.google.gwt.http.client.URL.encodeQueryString;
 import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
 import static java.util.Arrays.asList;
@@ -8,29 +22,21 @@ import static javax.ws.rs.core.HttpHeaders.ACCEPT;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestBuilder;
-import com.google.gwt.http.client.RequestCallback;
-import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.Response;
-import com.google.gwt.http.client.URL;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import javax.annotation.Nullable;
-import jsinterop.annotations.JsMethod;
-import rx.Completable;
-import rx.Observable;
-import rx.Single;
-import rx.annotations.Experimental;
-import rx.functions.Func1;
-import rx.subscriptions.Subscriptions;
-
-@Experimental @SuppressWarnings("GwtInconsistentSerializableClass")
+@Experimental
+@SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
     private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
+    private final JsJsonMapper jsJsonMapper = new JsJsonMapper();
+
+    @FunctionalInterface
+    private interface JsonDecoder<T> {
+        T decode(String json, JsonMapper jsonMapper);
+    }
+
+    private static final JsonDecoder<Object> SINGLE_JSON_DECODER = (json, jsonMapper) -> jsonMapper.read(json);
+    private static final JsonDecoder<Object[]> ARRAY_JSON_DECODER = (json, jsonMapper) -> jsonMapper.readAsArray(json);
+
 
     private Func1<Integer, Boolean> expectedStatuses;
     private Func1<RequestBuilder, Request> dispatcher;
@@ -82,19 +88,36 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     }
 
     @SuppressWarnings("unchecked")
-    @Override public <T> T as(Class<? super T> container, Class<?> type) {
+    @Override
+    public <T> T as(Class<? super T> container, Class<?> type) {
         if (Completable.class.equals(container)) return (T) request().toCompletable();
-        if (Single.class.equals(container)) return (T) request().map(this::decode);
+        if (Single.class.equals(container)) return (T) request().map(context -> decodeSingle(context, type));
         if (Observable.class.equals(container)) return (T) request().toObservable().flatMapIterable(ctx -> {
-            Object[] decode = decode(ctx); return decode == null ? Collections.emptyList() : Arrays.asList(decode);
+            Object[] decode = decodeArray(ctx, type);
+            return decode == null ? Collections.emptyList() : Arrays.asList(decode);
         });
         throw new UnsupportedOperationException("unsupported type " + container);
     }
 
-    private @Nullable <T> T decode(Context ctx) {
+    private <T> T decodeSingle(Context context, Class<?> type) {
+        return decode(context, SINGLE_JSON_DECODER, getMapper(type));
+    }
+
+    private <T> T decodeArray(Context context, Class<?> type) {
+        return decode(context, ARRAY_JSON_DECODER, getMapper(type));
+    }
+
+    protected JsonMapper getMapper(Class<?> type) {
+        if (MappersRegistry.contains(type.getCanonicalName()))
+            return MappersRegistry.get(type.getCanonicalName());
+        return jsJsonMapper;
+    }
+
+    private @Nullable
+    <T> T decode(Context ctx, JsonDecoder jsonDecoder, JsonMapper jsonMapper) {
         try {
             String text = requireNonNull(ctx.res).getText();
-            return text == null || text.isEmpty() ? null : parse(text);
+            return text == null || text.isEmpty() ? null : (T) jsonDecoder.decode(text, jsonMapper);
         } catch (Throwable e) {
             throw new ResponseFormatException(ctx, "Parsing response error", e);
         }
@@ -105,12 +128,13 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
             final Context ctx = new Context();
             try {
                 MyRequestBuilder rb = new MyRequestBuilder(method, uri());
-                rb.setRequestData(data == null ? null : stringify(data));
+                rb.setRequestData(data == null ? null : getMapper(data.getClass()).write(data));
                 for (Param h : headerParams) rb.setHeader(h.k, Objects.toString(h.v));
                 if (rb.getHeader(CONTENT_TYPE) == null) rb.setHeader(CONTENT_TYPE, APPLICATION_JSON);
                 if (rb.getHeader(ACCEPT) == null) rb.setHeader(ACCEPT, APPLICATION_JSON);
                 rb.setCallback(new RequestCallback() {
-                    @Override public void onResponseReceived(Request req, Response res) {
+                    @Override
+                    public void onResponseReceived(Request req, Response res) {
                         ctx.res = res;
                         if (isExpected(rb.getUrl(), res.getStatusCode())) {
                             em.onSuccess(ctx);
@@ -118,7 +142,9 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                             em.onError(new FailedStatusCodeException(ctx, res.getStatusText(), res.getStatusCode()));
                         }
                     }
-                    @Override public void onError(Request req1, Throwable e) {
+
+                    @Override
+                    public void onError(Request req1, Throwable e) {
                         if (!(e instanceof CanceledRequestException)) em.onError(e);
                     }
                 });
@@ -136,46 +162,70 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     }
 
     private static final class Context {
-        @Nullable Request req;
-        @Nullable Response res;
+        @Nullable
+        Request req;
+        @Nullable
+        Response res;
     }
 
     public static class RequestResponseException extends RuntimeException {
         private final Context req;
+
         public RequestResponseException(Context req, String msg, @Nullable Throwable c) {
-            super(msg, c); this.req = req;
+            super(msg, c);
+            this.req = req;
         }
-        public @Nullable Request getRequest() { return req.req; }
-        public @Nullable Response getResponse() { return req.res; }
+
+        public @Nullable
+        Request getRequest() {
+            return req.req;
+        }
+
+        public @Nullable
+        Response getResponse() {
+            return req.res;
+        }
     }
 
     public static class ResponseFormatException extends RequestResponseException {
-        public ResponseFormatException(Context req, String msg, Throwable e) { super(req, msg, e); }
+        public ResponseFormatException(Context req, String msg, Throwable e) {
+            super(req, msg, e);
+        }
     }
 
     public static class FailedStatusCodeException extends RequestResponseException {
         private final int sc;
-        public FailedStatusCodeException(Context req, String m, int sc) { super(req, m, null); this.sc = sc; }
-        public int getStatusCode() { return sc; }
+
+        public FailedStatusCodeException(Context req, String m, int sc) {
+            super(req, m, null);
+            this.sc = sc;
+        }
+
+        public int getStatusCode() {
+            return sc;
+        }
     }
 
     public static class CanceledRequestException extends RequestResponseException {
-        public CanceledRequestException(Context req, String m) { super(req, m, null); }
+        public CanceledRequestException(Context req, String m) {
+            super(req, m, null);
+        }
     }
 
-    @JsMethod(namespace = "JSON")
-    private static native <T> T parse(String text);
-
-    @JsMethod(namespace = "JSON")
-    private static native <T> T stringify(Object value);
-
     private static class MyRequestBuilder extends RequestBuilder {
-        MyRequestBuilder(String httpMethod, String url) { super(httpMethod, url); }
+        MyRequestBuilder(String httpMethod, String url) {
+            super(httpMethod, url);
+        }
     }
 
     private static class MyDispatcher implements Func1<RequestBuilder, Request> {
-        @Override public Request call(RequestBuilder requestBuilder) {
-            try { return requestBuilder.send(); } catch (RequestException e) { throw new RuntimeException(e); }
+        @Override
+        public Request call(RequestBuilder requestBuilder) {
+            try {
+                return requestBuilder.send();
+            } catch (RequestException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

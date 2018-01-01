@@ -1,73 +1,56 @@
 package com.intendia.gwt.autorest.processor;
 
-import static com.google.auto.common.MoreTypes.asElement;
-import static java.util.Collections.singleton;
-import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toSet;
-import static javax.lang.model.element.Modifier.FINAL;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
-import static javax.ws.rs.HttpMethod.DELETE;
-import static javax.ws.rs.HttpMethod.GET;
-import static javax.ws.rs.HttpMethod.HEAD;
-import static javax.ws.rs.HttpMethod.OPTIONS;
-import static javax.ws.rs.HttpMethod.POST;
-import static javax.ws.rs.HttpMethod.PUT;
-
 import com.google.auto.common.MoreTypes;
+import com.google.auto.service.AutoService;
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import com.intendia.gwt.autorest.client.RestServiceModel;
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import com.squareup.javapoet.*;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
+import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.inject.Inject;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.*;
 import javax.tools.Diagnostic.Kind;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.CookieParam;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.HttpMethod;
-import javax.ws.rs.MatrixParam;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static com.google.auto.common.MoreTypes.asElement;
+import static java.util.Collections.singleton;
+import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.toSet;
+import static javax.lang.model.element.Modifier.*;
+import static javax.ws.rs.HttpMethod.*;
+
+@AutoService(Processor.class)
 public class AutoRestGwtProcessor extends AbstractProcessor {
     private static final Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(toSet());
     private static final String[] EMPTY = {};
     private static final String AutoRestGwt = AutoRestGwt.class.getCanonicalName();
 
-    @Override public Set<String> getSupportedOptions() { return singleton("debug"); }
+    @Override
+    public Set<String> getSupportedOptions() {
+        return singleton("debug");
+    }
 
-    @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt); }
+    @Override
+    public Set<String> getSupportedAnnotationTypes() {
+        return singleton(AutoRestGwt);
+    }
 
-    @Override public SourceVersion getSupportedSourceVersion() { return SourceVersion.latestSupported(); }
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
+    }
 
-    @Override public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) return false;
         roundEnv.getElementsAnnotatedWith(AutoRestGwt.class).stream()
                 .filter(e -> e.getKind().isInterface() && e instanceof TypeElement).map(e -> (TypeElement) e)
@@ -181,7 +164,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
     private String methodImport(Set<String> methodImports, String method) {
         if (HTTP_METHODS.contains(method)) {
-            methodImports.add(method); return method;
+            methodImports.add(method);
+            return method;
         } else {
             return "\"" + method + "\"";
         }

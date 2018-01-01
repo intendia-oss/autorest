@@ -1,36 +1,43 @@
 package com.intendia.gwt.autorest.example.client;
 
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
+import com.intendia.gwt.autorest.example.shared.JacksonGreeting;
 import rx.Observable;
+
+import javax.ws.rs.*;
+import javax.ws.rs.core.Response;
 
 @AutoRestGwt
 @Path("observable")
 public interface ObservableService {
 
-    @PUT Observable<Void> ping();
+    @PUT
+    Observable<Void> ping();
 
-    @GET Observable<Greeting> get();
+    @GET
+    Observable<Greeting> get();
 
-    @POST Observable<Greeting> post(Greeting name);
+    @POST
+    Observable<Greeting> post(Greeting name);
 
     @Path("foo")
-    @GET Observable<Greeting> getFoo();
+    @GET
+    Observable<Greeting> getFoo();
 
     @Path("foo/{foo}")
-    @GET Observable<Greeting> getFoo(
+    @GET
+    Observable<Greeting> getFoo(
             @PathParam("foo") String foo,
             @QueryParam("bar") String bar,
             @QueryParam("unk") String oth);
 
-    @com.google.gwt.core.shared.GwtIncompatible Response gwtIncompatible();
+    @POST
+    Observable<JacksonGreeting> test(JacksonGreeting name);
 
-    @com.google.common.annotations.GwtIncompatible("serverOnly") Response guavaIncompatible();
+    @com.google.gwt.core.shared.GwtIncompatible
+    Response gwtIncompatible();
+
+    @com.google.common.annotations.GwtIncompatible("serverOnly")
+    Response guavaIncompatible();
 
 }
