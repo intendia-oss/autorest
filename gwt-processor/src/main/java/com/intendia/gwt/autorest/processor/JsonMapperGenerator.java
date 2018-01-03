@@ -1,7 +1,7 @@
 package com.intendia.gwt.autorest.processor;
 
-import com.intendia.gwt.autorest.client.JacksonMapper;
-import com.intendia.gwt.autorest.client.JsonMapper;
+import com.intendia.gwt.autorest.client.jackson.JacksonMapper;
+import com.intendia.gwt.autorest.client.mapper.JsonMapper;
 import com.progressoft.brix.domino.gwtjackson.DefaultJsonDeserializationContext;
 import com.progressoft.brix.domino.gwtjackson.JsonDeserializationContext;
 import com.progressoft.brix.domino.gwtjackson.ObjectMapper;

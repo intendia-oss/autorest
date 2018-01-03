@@ -1,8 +1,8 @@
 package com.intendia.gwt.autorest.processor.client;
 
 import com.google.gwt.junit.client.GWTTestCase;
-import com.intendia.gwt.autorest.client.JsJsonMapper;
-import com.intendia.gwt.autorest.client.JsonMapper;
+import com.intendia.gwt.autorest.client.mapper.JsJsonMapper;
+import com.intendia.gwt.autorest.client.mapper.JsonMapper;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
 import com.intendia.gwt.autorest.processor.client.test.TestBean;
 import rx.Single;

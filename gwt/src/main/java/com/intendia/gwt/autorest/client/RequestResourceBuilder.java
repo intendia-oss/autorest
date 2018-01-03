@@ -1,6 +1,9 @@
 package com.intendia.gwt.autorest.client;
 
 import com.google.gwt.http.client.*;
+import com.intendia.gwt.autorest.client.mapper.JsJsonMapper;
+import com.intendia.gwt.autorest.client.mapper.JsonMapper;
+import com.intendia.gwt.autorest.client.mapper.MappersRegistry;
 import rx.Completable;
 import rx.Observable;
 import rx.Single;

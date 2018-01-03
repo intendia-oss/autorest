@@ -1,6 +1,6 @@
 package com.intendia.gwt.autorest.processor;
 
-import com.intendia.gwt.autorest.client.MappersRegistry;
+import com.intendia.gwt.autorest.client.mapper.MappersRegistry;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;

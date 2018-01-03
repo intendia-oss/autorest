@@ -1,4 +1,4 @@
-package com.intendia.gwt.autorest.client;
+package com.intendia.gwt.autorest.client.mapper;
 
 import jsinterop.annotations.JsMethod;
 
