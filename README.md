@@ -1,50 +1,45 @@
 # AutoREST for GWT 
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.intendia.gwt.autorest/autorest-parent/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.intendia.gwt.autorest/autorest-parent)
-[![Build Status](https://travis-ci.org/intendia-oss/autorest.svg)](https://travis-ci.org/intendia-oss/autorest)
-[![Join the chat at https://gitter.im/intendia-oss/autorest](https://badges.gitter.im/intendia-oss/autorest.svg)](https://gitter.im/intendia-oss/autorest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+This is a fork from [autorest](https://github.com/intendia-oss/autorest) for adding [gwt-jackson-apt](https://github.com/vegegoku/gwt-jackson-apt) support.
 
-*A source code generator for GWT compatible proxies from RESTful services (JSR311).*
 
-This project is a fresh start of *RestyGWT* removing everything related to
-encoding/decoding which now is delegated to ``JSON.parse`` and
-``JSON.stringify``. Thought to be used with JSO or JsInterop.
+## Usage:
 
-To keep the project simple only part of the JSR311 will be supported:
-* @Path (regex not supported and there is no intention to do so)
-* @HttpMethod (so all @GET, @POST...)
-* @PathParam and @QueryParam (other params will be supported)
-* @Consumer and @Producer are currently ignored (treated both and always as 'application/json')
+You have to add these dependencies:
+```xml
+        <dependency>
+            <groupId>com.progressoft.brix.domino.gwtjackson</groupId>
+            <artifactId>gwt-jackson-apt-api</artifactId>
+            <version>${gwt.jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.progressoft.brix.domino.gwtjackson</groupId>
+            <artifactId>gwt-jackson-apt-processor</artifactId>
+            <version>${gwt.jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-gwt-processor</artifactId>
+            <version>HEAD-SNAPSHOT</version>
+        </dependency>
+```
 
-Only [RxJava][rxjava] types (Observable and Single) can be used as return value.
-This is mandatory to share the same interface between the client and the server,
-usually the server requires a synchronous return value but the client requires
-an asynchronous response. [RxJava][rxjava] types allows to get both strategies
-using the same type.
-
-## Download
-
-Releases are deployed to [the Central Repository][dl].
-
-Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
-
-## What is this for?
-
-Creating REST services using JAX-RS annotations in a breeze, this is a minimal working example:
+Now it is supporting gwt-jackson by simple create a simple bean and use it like this:
 
 ```java
+
 public class ExampleEntryPoint implements EntryPoint {
 
     @AutoRestGwt @Path("search") interface Nominatim {
         @GET Observable<SearchResult> search(@QueryParam("q") String query, @QueryParam("format") String format);
     }
 
-    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
-    public static class SearchResult {
-        public String display_name; //ex: "Málaga, Provincia de Málaga, Andalusia, Spain",
-        public String lat; //ex: "36.7210805",
-        public String lon; //ex: "-4.4210409",
-        public double importance; //ex: 0.73359836669253,
+    public class SearchResult {
+        public String display_name;
+        public String lat;
+        public String lon;
+        public double importance;
     }
 
     public void onModuleLoad() {
@@ -56,91 +51,14 @@ public class ExampleEntryPoint implements EntryPoint {
 
     static ResourceVisitor osm() { return new RequestResourceBuilder().path("http://nominatim.openstreetmap.org/"); }
 }
+
 ```
 
-*AutoREST* will generate the proxy (Nominatim_RestServiceProxy) and you get the
-awesome [RxJava][rxjava] API for free. If your have a java server side, you
-probably should try share the REST API (this is the whole idea), and if you are
-using Jackson too, you can get inspired by [RxJavaJacksonSerializers][jackson].
-
-## How is done?
-
-You define the JAX-RS service interface...
+You need to add `package-info.java` in your `client` package:
 
 ```java
-@AutoRestGwt @Path("orders")
-public interface PizzaService {
+@JacksonConfiguration
+package com.foo.client;
 
-    @POST Single<OrderConfirmation> createOrder(PizzaOrder request);
-
-    @GET Observable<PizzaOrder> fetchOrders(@QueryParam("first") int first, @QueryParam("max") int max);
-
-    @GET @Path("{id}") Single<PizzaOrder> fetchOrder(@PathParam("id") orderId);
-}
+import com.intendia.gwt.autorest.client.jackson.JacksonConfiguration;
 ```
-
-And *AutoREST* generates the service model...
-
-```java
-public class PizzaService_RestServiceModel extends RestServiceModel implements PizzaService {
-
-    public PizzaService_RestServiceModel(ResourceVisitor.Supplier parent) {
-        super(() -> parent.get().path("orders"));
-    }
-
-    @POST Single<OrderConfirmation> createOrder(PizzaOrder request) {
-        return method(POST).path().data(request).as(Single.class,OrderConfirmation.class);
-    }
-
-    @GET Observable<PizzaOrder> fetchOrders(@QueryParam("first") int first, @QueryParam("max") int max) {
-        return method(GET).path().param("first",first).param("max",max).as(Observable.class,PizzaOrder.class);
-    }
-
-    @GET @Path("{id}") Single<PizzaOrder> fetchOrder(@PathParam("id") orderId) {
-        return method(GET).path(orderId).as(Single.class,PizzaOrder.class);
-    }
-}
-```
-
-This model map each resource method call all the way back to the root ``ResourceVisitor`` factory,
-create a new visitor, visits each resource until the end point is reached and ends wrapping the result
-into the expected type.
-
-![AutoREST evaluation flow](https://github.com/intendia-oss/autorest/raw/master/autorest-flow.gif)
-
-Everything looks quite simple, isn't it? This is important, keep it simple. If
-at any point something is not supported you can always implements it yourserlf.
-This project try to be just a boilerplate-reducer library, the unique actual
-logic is the ``com.google.gwt.http.client.RequestBuilder`` to ``rx.Producer``code.
-
-## Response containers
-
-This library is focused on JSON. So you should only expect 3 types of JSON responses, an empty/ignored body response,
-a JSON Object response or a JSON Array response. This tree types will match perfectly with the Completable, Single
-and Observable RxJava type, we call this the **container**. You are not limited to RxJava wrappers, but you should keep
-in mind this 3 containers so you codec will handle the response as expected. The synchronous counterpart of this 3
-containers are ``Void``, ``T`` and ``T[]``. The next table shows the recommended response/container matching strategy.
-
-|           |Observable\<T>|Single\<T>|Completable|
-| :-:       | :-:          | :-:      | :-:       |
-|**[…]**    | **T(n items)** | Error* | Ignore    |
-|**{…}**    | T(1 item)    | **T**    | Ignore    |
-|**other**  | T*(1 item)   | T\*      | Ignore    |
-|**empty**  | Void(0 item) | Error    | **Ignore**|
-
-**\*Error**: an JSON array should be handled by an stream wrapper (to keep things simpler), but you are in control of
-the codec, so you might support array types like ``String[]``, so ``Single<String[]>`` will return the JSON arrays in a 
-``Single`` wrapper.
-
-**\*T**: the "other" row represent "other values" like ``"some string"`` or ``123``. Again, it is recommended to only
-support ``T`` types where ``T`` is not a primitive (boxed or not) nor an array, but is up to you support this
-``Single<Integer>`` or ``Observable<Float>``.
-
-**\*Ignore**: completable will always ignore the response only notifing a successfully response or error otherwise.
-
-
-
- [dl]: https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.intendia.gwt.autorest%22
- [snap]: https://oss.sonatype.org/content/repositories/snapshots/
- [jackson]: https://gist.github.com/ibaca/71be7c73d8619d11182807b871c5975c
- [rxjava]: https://github.com/ReactiveX/RxJava
