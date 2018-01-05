@@ -8,50 +8,14 @@
         <version>9</version>
     </parent>
     <groupId>com.intendia.gwt.autorest</groupId>
-    <artifactId>autorest-parent</artifactId>
+    <artifactId>autorest-jacksonapt-parent</artifactId>
     <version>HEAD-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <description>A source code generator for GWT compatible proxies from RESTful services (JSR311).</description>
-    <url>https://github.com/intendia-oss/autorest</url>
 
-    <inceptionYear>2016</inceptionYear>
-    <licenses>
-        <license>
-            <name>Apache 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-        </license>
-    </licenses>
-
-    <developers>
-        <developer>
-            <name>Ignacio Baca Moreno-Torres</name>
-            <email>ignacio@bacamt.com</email>
-        </developer>
-    </developers>
-
-    <scm>
-        <connection>scm:git:https://github.com/intendia-oss/autorest.git</connection>
-        <developerConnection>scm:git:git@github.com:intendia-oss/autorest.git</developerConnection>
-        <url>https://github.com/intendia-oss/autorest</url>
-        <tag>HEAD</tag>
-    </scm>
-
-    <issueManagement>
-        <system>GitHub</system>
-        <url>https://github.com/intendia-oss/autorest/issues</url>
-    </issueManagement>
-
-    <prerequisites>
-        <maven>3</maven>
-    </prerequisites>
 
     <modules>
         <module>core</module>
-        <module>example</module>
-        <module>gwt</module>
-        <module>jre</module>
         <module>processor</module>
-        <module>gwt-processor</module>
     </modules>
 
     <properties>

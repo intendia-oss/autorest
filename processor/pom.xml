@@ -1,36 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.intendia.gwt.autorest</groupId>
-        <artifactId>autorest-parent</artifactId>
+        <artifactId>autorest-jacksonapt-parent</artifactId>
         <version>HEAD-SNAPSHOT</version>
     </parent>
-    <artifactId>autorest-processor</artifactId>
+    <artifactId>autorest-jacksonapt-processor</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>com.intendia.gwt.autorest</groupId>
-            <artifactId>autorest-core</artifactId>
+            <artifactId>autorest-jacksonapt-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>jsr311-api</artifactId>
+            <groupId>com.progressoft.brix.domino.gwtjackson</groupId>
+            <artifactId>gwt-jackson-apt-api</artifactId>
+            <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>javax.inject</groupId>
-            <artifactId>javax.inject</artifactId>
+            <groupId>com.intendia.gwt.autorest</groupId>
+            <artifactId>autorest-core</artifactId>
+            <version>0.7</version>
         </dependency>
         <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.auto</groupId>
-            <artifactId>auto-common</artifactId>
-            <version>0.4</version>
+            <groupId>com.progressoft.brix.domino.gwtjackson</groupId>
+            <artifactId>gwt-jackson-apt-processor</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.squareup</groupId>
@@ -43,55 +43,31 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.google.auto.service</groupId>
-            <artifactId>auto-service</artifactId>
-            <version>1.0-rc3</version>
+            <groupId>com.intendia.gwt</groupId>
+            <artifactId>rxjava-gwt</artifactId>
+            <version>${rxjava-gwt.version}</version>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
-                <groupId>org.immutables.tools</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>4</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <minimizeJar>true</minimizeJar>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>com.intendia.gwt.autorest:autorest-core</exclude>
-                                    <exclude>javax.ws.rs:jsr311-api</exclude>
-                                    <exclude>javax.inject:javax.inject</exclude>
-                                    <exclude>com.google.code.findbugs:jsr305</exclude>
-                                </excludes>
-                            </artifactSet>
-                            <relocations>
-                                <relocation>
-                                    <pattern>com.google</pattern>
-                                    <shadedPattern>autorest.shaded.com.google$</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>com.squareup.javapoet</pattern>
-                                    <shadedPattern>autorest.shaded.com.squareup.javapoet$</shadedPattern>
-                                </relocation>
-                            </relocations>
-                        </configuration>
-                    </execution>
-                </executions>
+                <groupId>net.ltgt.gwt.maven</groupId>
+                <artifactId>gwt-maven-plugin</artifactId>
+                <configuration>
+                    <moduleName>com.intendia.gwt.autorest.processor.JsonMapperProcessorTest</moduleName>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <additionalClasspathElements>
+                        <classpathElement>${basedir}/src/test/java</classpathElement>
+                        <classpathElement>target/generated-test-sources/test-annotations</classpathElement>
+                    </additionalClasspathElements>
+                </configuration>
             </plugin>
         </plugins>
     </build>
 </project>
-
-
