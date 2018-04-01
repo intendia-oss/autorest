@@ -48,7 +48,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
     }
 
     @Override public <T> T as(Class<? super T> container, Class<?> type) {
-        return json.<T>fromJson(request(), container, type);
+        return json.fromJson(request(), container, type);
     }
 
     private Single<Reader> request() {
@@ -109,10 +109,25 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         @SuppressWarnings("unchecked")
         @Override public <T> T fromJson(Single<Reader> req, Class<? super T> container, Class<?> type) {
             if (Completable.class.equals(container)) return (T) req.doOnSuccess(this::consume).toCompletable();
-            if (Single.class.equals(container)) return (T) req.map(reader -> gson.fromJson(reader, type));
+            if (Single.class.equals(container)) return (T) req.map(reader -> {
+                if (Reader.class.equals(type)) return reader;
+                if (String.class.equals(type)) return readAsString(reader);
+                return gson.fromJson(reader, type);
+            });
             if (Observable.class.equals(container)) return (T) req.toObservable()
                     .flatMapIterable(n -> () -> new ParseArrayIterator<>(n, type));
             throw new IllegalArgumentException("unsupported type " + container);
+        }
+
+        private static String readAsString(Reader in) {
+            try {
+                StringBuilder out = new StringBuilder();
+                int ch; while ((ch = in.read()) != -1) out.append((char) ch);
+                in.close();
+                return out.toString();
+            } catch (IOException e) {
+                throw new RuntimeException("error reading request data", e);
+            }
         }
 
         private class ParseArrayIterator<T> implements Iterator<T> {
