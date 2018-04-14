@@ -3,6 +3,6 @@
 <module>
     <inherits name="com.google.gwt.core.Core"/>
     <inherits name="com.google.gwt.http.HTTP"/>
-    <inherits name="rx.Rx"/>
+    <inherits name="io.reactivex.RxJava"/>
     <source path="client"/>
 </module>

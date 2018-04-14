@@ -22,13 +22,12 @@ import com.google.gwt.user.client.ui.TextBox;
 import com.google.web.bindery.event.shared.HandlerRegistration;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
-import rx.Observable;
-import rx.Subscriber;
-import rx.functions.Action1;
-import rx.subscriptions.Subscriptions;
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.functions.Consumer;
 
 public class ExampleEntryPoint implements EntryPoint {
-    private Action1<Throwable> err = e -> GWT.log("exception: " + e, e);
+    private Consumer<Throwable> err = e -> GWT.log("exception: " + e, e);
 
     public void onModuleLoad() {
         TextBox name = append(new TextBox());
@@ -88,7 +87,7 @@ public class ExampleEntryPoint implements EntryPoint {
         return Observable.create(s -> register(s, source.addValueChangeHandler(s::onNext)));
     }
 
-    private static void register(Subscriber s, HandlerRegistration handlerRegistration) {
-        s.add(Subscriptions.create(handlerRegistration::removeHandler));
+    private static void register(ObservableEmitter<?> s, HandlerRegistration handlerRegistration) {
+        s.setCancellable(handlerRegistration::removeHandler);
     }
 }

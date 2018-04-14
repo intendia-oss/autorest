@@ -5,6 +5,9 @@ import static java.util.stream.Collectors.joining;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
+import io.reactivex.Completable;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -15,9 +18,6 @@ import java.net.URLEncoder;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import rx.Completable;
-import rx.Observable;
-import rx.Single;
 
 public class JreResourceBuilder extends CollectorResourceVisitor {
     private final ConnectionFactory factory;
@@ -84,7 +84,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
             return reader;
         }, Single::just, reader -> {
             try { reader.close(); } catch (IOException e) { throw err("closing response error", e); }
-        });
+        }, false/*late dispose*/);
     }
 
     private static RuntimeException err(String msg, Exception e) { return new RuntimeException(msg + ": " + e, e); }

@@ -2,7 +2,7 @@
 <module rename-to="example">
     <inherits name="com.google.gwt.user.User"/>
     <inherits name="com.intendia.gwt.autorest.AutoRest"/>
-    <inherits name="rx.Rx"/>
+    <inherits name="io.reactivex.RxJava"/>
     <collapse-all-properties/>
     <servlet path="/api/*" class="com.intendia.gwt.autorest.example.server.GreetingServlet"/>
     <entry-point class="com.intendia.gwt.autorest.example.client.ExampleEntryPoint"/>

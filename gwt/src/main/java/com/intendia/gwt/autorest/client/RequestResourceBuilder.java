@@ -14,26 +14,24 @@ import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.URL;
+import io.reactivex.Completable;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import javax.annotation.Nullable;
 import jsinterop.annotations.JsMethod;
-import rx.Completable;
-import rx.Observable;
-import rx.Single;
-import rx.annotations.Experimental;
-import rx.functions.Func1;
-import rx.subscriptions.Subscriptions;
 
-@Experimental @SuppressWarnings("GwtInconsistentSerializableClass")
+@SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
-    private static final Func1<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
+    private static final Function<RequestBuilder, Request> DEFAULT_DISPATCHER = new MyDispatcher();
 
-    private Func1<Integer, Boolean> expectedStatuses;
-    private Func1<RequestBuilder, Request> dispatcher;
+    private Function<Integer, Boolean> expectedStatuses;
+    private Function<RequestBuilder, Request> dispatcher;
 
     public RequestResourceBuilder() {
         super();
@@ -57,7 +55,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         return URL.encode(uri) + query();
     }
 
-    public ResourceVisitor dispatcher(Func1<RequestBuilder, Request> dispatcher) {
+    public ResourceVisitor dispatcher(Function<RequestBuilder, Request> dispatcher) {
         this.dispatcher = dispatcher;
         return this;
     }
@@ -78,7 +76,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
      * accept all codes. This is for instance relevant when developing a PhoneGap application.
      */
     private boolean isExpected(String url, int status) {
-        return url.startsWith("file") || expectedStatuses.call(status);
+        return url.startsWith("file") || expectedStatuses.apply(status);
     }
 
     @SuppressWarnings("unchecked")
@@ -122,13 +120,13 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                         if (!(e instanceof CanceledRequestException)) em.onError(e);
                     }
                 });
-                em.add(Subscriptions.create(() -> {
+                em.setCancellable(() -> {
                     if (ctx.req != null && ctx.req.isPending()) {
                         ctx.req.cancel(); // fire canceled exception so decorated callbacks get notified
                         rb.getCallback().onError(ctx.req, new CanceledRequestException(ctx, "CANCELED"));
                     }
-                }));
-                ctx.req = dispatcher.call(rb);
+                });
+                ctx.req = dispatcher.apply(rb);
             } catch (Throwable e) {
                 em.onError(new RequestResponseException(ctx, "Request '" + uri() + "' error", e));
             }
@@ -173,8 +171,8 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         MyRequestBuilder(String httpMethod, String url) { super(httpMethod, url); }
     }
 
-    private static class MyDispatcher implements Func1<RequestBuilder, Request> {
-        @Override public Request call(RequestBuilder requestBuilder) {
+    private static class MyDispatcher implements Function<RequestBuilder, Request> {
+        @Override public Request apply(RequestBuilder requestBuilder) {
             try { return requestBuilder.send(); } catch (RequestException e) { throw new RuntimeException(e); }
         }
     }

@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import com.sun.net.httpserver.HttpServer;
+import io.reactivex.Completable;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import javax.ws.rs.GET;
@@ -12,9 +15,6 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import rx.Completable;
-import rx.Observable;
-import rx.Single;
 
 public class JreResourceBuilderTest {
 
@@ -42,28 +42,28 @@ public class JreResourceBuilderTest {
         });
         httpServer.start();
     }
-    @AfterClass public static void closeServer() throws Exception {
+    @AfterClass public static void closeServer() {
         httpServer.stop(0);
     }
 
     private static String baseUrl;
     private static TestRestService_RestServiceModel rest;
 
-    @Before public void prepareClient() throws Exception {
+    @Before public void prepareClient() {
         baseUrl = "http://localhost:" + httpServer.getAddress().getPort() + "/";
         rest = new TestRestService_RestServiceModel(() -> new JreResourceBuilder(baseUrl));
     }
 
-    @Test public void zero() throws Exception {
-        assertNull(rest.zero().get());
+    @Test public void zero() {
+        assertNull(rest.zero().blockingGet());
     }
 
-    @Test public void one() throws Exception {
-        assertEquals("expected", rest.one().toBlocking().value().bar);
+    @Test public void one() {
+        assertEquals("expected", rest.one().blockingGet().bar);
     }
 
-    @Test public void many() throws Exception {
-        assertEquals(2, rest.many().toList().toSingle().toBlocking().value().size());
+    @Test public void many() {
+        assertEquals(2, rest.many().toList().blockingGet().size());
     }
 
     @AutoRestGwt @Path("api")
