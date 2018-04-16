@@ -15,6 +15,7 @@ import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.URL;
 import io.reactivex.Completable;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import java.util.Arrays;
@@ -82,6 +83,9 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     @SuppressWarnings("unchecked")
     @Override public <T> T as(Class<? super T> container, Class<?> type) {
         if (Completable.class.equals(container)) return (T) request().toCompletable();
+        if (Maybe.class.equals(container)) return (T) request().flatMapMaybe(ctx -> {
+            Object decode = decode(ctx); return decode == null ? Maybe.empty() : Maybe.just(decode);
+        });
         if (Single.class.equals(container)) return (T) request().map(this::decode);
         if (Observable.class.equals(container)) return (T) request().toObservable().flatMapIterable(ctx -> {
             Object[] decode = decode(ctx); return decode == null ? Collections.emptyList() : Arrays.asList(decode);
