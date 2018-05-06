@@ -84,11 +84,16 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     @Override public <T> T as(Class<? super T> container, Class<?> type) {
         if (Completable.class.equals(container)) return (T) request().toCompletable();
         if (Maybe.class.equals(container)) return (T) request().flatMapMaybe(ctx -> {
-            Object decode = decode(ctx); return decode == null ? Maybe.empty() : Maybe.just(decode);
+            @Nullable Object decode = decode(ctx);
+            return decode == null ? Maybe.empty() : Maybe.just(decode);
         });
-        if (Single.class.equals(container)) return (T) request().map(this::decode);
+        if (Single.class.equals(container)) return (T) request().map(ctx -> {
+            @Nullable Object decode = decode(ctx);
+            return requireNonNull(decode, "null response forbidden, use Maybe instead");
+        });
         if (Observable.class.equals(container)) return (T) request().toObservable().flatMapIterable(ctx -> {
-            Object[] decode = decode(ctx); return decode == null ? Collections.emptyList() : Arrays.asList(decode);
+            @Nullable Object[] decode = decode(ctx);
+            return decode == null ? Collections.emptyList() : Arrays.asList(decode);
         });
         throw new UnsupportedOperationException("unsupported type " + container);
     }

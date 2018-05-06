@@ -6,23 +6,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 // @WebServlet(name = "greeting-service", urlPatterns = "/example/api/*")
 public class GreetingServlet extends HttpServlet {
-    private static final Logger log = Logger.getLogger(GreetingServlet.class.getName());
+    private static final Logger L = Logger.getLogger(GreetingServlet.class.getName());
     private static final String helloWorldJson = "[{\"greeting\":\"Hello World\"}]";
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         String uri = req.getRequestURI();
-        log.info("Sending 'Hello World' in response of " + uri);
+        L.info("Sending 'Hello World' in response of " + uri);
         try {
             String FOO_URI = "/example/api/observable/foo";
             if (uri.equals(FOO_URI)) {
@@ -36,14 +34,14 @@ public class GreetingServlet extends HttpServlet {
                 mapper.writeValue(resp.getOutputStream(), helloJsonNode);
             }
         } catch (Throwable e) {
-            log.log(Level.SEVERE, "error sending 'Hello World'", e);
+            L.log(Level.SEVERE, "error sending 'Hello World'", e);
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
         String uri = req.getRequestURI();
-        log.info("Creating custom greeting in response of " + uri);
+        L.info("Creating custom greeting in response of " + uri);
         try {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode nameObject = mapper.readValue(req.getInputStream(), ObjectNode.class);
@@ -52,11 +50,11 @@ public class GreetingServlet extends HttpServlet {
             value.put("greeting", "Hello " + nameObject.get("greeting").asText());
             mapper.writeValue(resp.getOutputStream(), new ArrayNode(instance).add(value));
         } catch (Throwable e) {
-            log.log(Level.SEVERE, "error creating custom greeting", e);
+            L.log(Level.SEVERE, "error creating custom greeting", e);
         }
     }
 
     @Override protected void doPut(HttpServletRequest req, HttpServletResponse resp) {
-        log.info("Void pong response...");
+        L.info("Void pong response...");
     }
 }

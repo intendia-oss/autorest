@@ -4,7 +4,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.event.dom.client.HasKeyUpHandlers;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.logical.shared.HasValueChangeHandlers;
@@ -22,6 +21,7 @@ import com.google.gwt.user.client.ui.TextBox;
 import com.google.web.bindery.event.shared.HandlerRegistration;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
+import com.intendia.gwt.autorest.example.client.ExampleService.Greeting;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.functions.Consumer;
@@ -52,27 +52,26 @@ public class ExampleEntryPoint implements EntryPoint {
                     try { return rb.send(); } catch (RequestException e) { throw new RuntimeException(e); }
                 })
                 .path(GWT.getModuleBaseURL(), "api");
-        ObservableService oService = new ObservableService_RestServiceModel(
-                () -> getApi.get().header("mode", "observable"));
-        SingleService sService = new SingleService_RestServiceModel(() -> getApi.get().header("mode", "single"));
+        ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok"));
 
         Observable.merge(valueChange(name), keyUp(name)).map(e -> name.getValue())
                 .switchMap(q -> {
-                    Greeting greeting = JavaScriptObject.createObject().cast();
-                    greeting.setGreeting(q);
-                    return oService.post(greeting)
-                            .map(Greeting::getGreeting)
+                    Greeting greeting = new Greeting();
+                    greeting.greeting = q;
+                    return srv.post(greeting)
+                            .map(o -> o.greeting)
                             .onErrorReturn(Throwable::toString);
                 })
                 .forEach(out::setHTML);
         name.setValue("ping", true);
 
         append("-- Static tests --");
-        oService.ping().subscribe(n -> append("observable pong"), err);
-        sService.ping().subscribe(n -> append("single pong"), err);
+        srv.pingObservable().ignoreElements().subscribe(() -> append("observable pong"), err);
+        srv.pingMaybe().ignoreElement().subscribe(() -> append("maybe pong"), err);
+        srv.pingCompletable().subscribe(() -> append("completable pong"), err);
 
-        oService.getFoo().subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
-        oService.getFoo("FOO", "BAR", null).subscribe(n -> append("observable.foo response: " + n.getGreeting()), err);
+        srv.getFoo().subscribe(n -> append("observable.foo response: " + n.greeting), err);
+        srv.getFoo("FOO", "BAR", null).subscribe(n -> append("observable.foo response: " + n.greeting), err);
     }
 
     private static void append(String text) { append(new Label(text)); }
