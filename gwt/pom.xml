@@ -8,6 +8,7 @@
     </parent>
     <artifactId>autorest-gwt</artifactId>
     <packaging>gwt-lib</packaging>
+    <name>AutoREST :: GWT</name>
     <description>GWT Reference implementation using RxJava-GWT and JsInterop.</description>
 
     <dependencies>

@@ -8,6 +8,7 @@
     </parent>
     <artifactId>autorest-gwt-example</artifactId>
     <packaging>gwt-app</packaging>
+    <name>AutoREST :: Example</name>
 
     <dependencyManagement>
         <dependencies>

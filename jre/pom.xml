@@ -8,6 +8,7 @@
     </parent>
     <artifactId>autorest-jre</artifactId>
     <packaging>jar</packaging>
+    <name>AutoREST :: JRE</name>
     <description>JRE Reference Implementation using RxJava and GSon.</description>
 
     <dependencies>
