@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.intendia.gwt.autorest</groupId>
     <artifactId>autorest-parent</artifactId>
-    <version>0.8</version>
+    <version>HEAD-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>AutoREST</name>
     <description>A source code generator for GWT compatible proxies from RESTful services (JSR311).</description>
@@ -28,7 +28,7 @@
         <connection>scm:git:https://github.com/intendia-oss/autorest.git</connection>
         <developerConnection>scm:git:git@github.com:intendia-oss/autorest.git</developerConnection>
         <url>https://github.com/intendia-oss/autorest</url>
-        <tag>v0.8</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
