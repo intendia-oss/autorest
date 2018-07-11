@@ -17,8 +17,11 @@ import static javax.ws.rs.HttpMethod.PUT;
 import com.google.auto.common.MoreTypes;
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
+import com.intendia.gwt.autorest.client.IgnoreRest;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import com.intendia.gwt.autorest.client.RestServiceModel;
+import com.intendia.gwt.autorest.client.Security;
+import com.intendia.gwt.autorest.client.SecurityDefinition;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -26,6 +29,7 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
@@ -84,9 +89,12 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     }
 
     private void processRestService(TypeElement restService) throws Exception {
+        final StringBuilder gSecurityDebug = new StringBuilder();
+
         String rsPath = restService.getAnnotation(Path.class).value();
         String[] produces = ofNullable(restService.getAnnotation(Produces.class)).map(Produces::value).orElse(EMPTY);
         String[] consumes = ofNullable(restService.getAnnotation(Consumes.class)).map(Consumes::value).orElse(EMPTY);
+        SecurityDefinition[] globalSecurity = ofNullable(restService.getAnnotation(Security.class)).map(Security::value).orElse(new SecurityDefinition[0]);
 
         ClassName rsName = ClassName.get(restService);
         log("rest service interface: " + rsName);
@@ -116,7 +124,12 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
         Set<String> methodImports = new HashSet<>();
         for (ExecutableElement method : methods) {
+        	if(method.getAnnotation(IgnoreRest.class) != null) {
+        		continue;
+        	}
+        	
             String methodName = method.getSimpleName().toString();
+            SecurityDefinition[] methodSecurity = ofNullable(method.getAnnotation(Security.class)).map(Security::value).orElse(globalSecurity);
 
             Optional<? extends AnnotationMirror> incompatible = isIncompatible(method);
             if (incompatible.isPresent()) {
@@ -152,6 +165,31 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 builder.add(".consumes($L)", Arrays
                         .stream(ofNullable(method.getAnnotation(Consumes.class)).map(Consumes::value).orElse(consumes))
                         .map(str -> "\"" + str + "\"").collect(Collectors.joining(", ")));
+
+                // security params
+                for(SecurityDefinition sd : methodSecurity) {
+                	switch(sd.type())
+                	{
+					case APIKEY:
+						switch(sd.location())
+						{
+						case HEADER:
+		               		builder.add(".header(\"$L\", getSecurityToken(\"$L\"))", sd.name(), sd.name());
+							break;
+						case QUERY:
+		               		builder.add(".param(\"$L\", getSecurityToken(\"$L\"))", sd.name(), sd.name());
+							break;
+						default:
+							log("skipping security "+sd.name()+" on "+methodName+" with unknown location.");
+							break;
+						}
+						break;
+					case BASIC:
+	                	builder.add(".header(\"Authorization\", \"Basic \"+getSecurityToken(\"$L\"))", sd.name());
+						break;
+                	}
+            	};
+                
                 // query params
                 method.getParameters().stream().filter(p -> p.getAnnotation(QueryParam.class) != null).forEach(p ->
                         builder.add(".param($S, $L)", p.getAnnotation(QueryParam.class).value(), p.getSimpleName()));
@@ -165,6 +203,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 method.getParameters().stream().filter(this::isParam).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
+            
             builder.add(".as($T.class, $T.class);\n$]",
                     processingEnv.getTypeUtils().erasure(method.getReturnType()),
                     MoreTypes.asDeclared(method.getReturnType()).getTypeArguments().stream().findFirst()
@@ -176,6 +215,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         Filer filer = processingEnv.getFiler();
         JavaFile.Builder file = JavaFile.builder(rsName.packageName(), modelTypeBuilder.build());
         for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
+        file.addFileComment(gSecurityDebug.toString());
         file.build().writeTo(filer);
     }
 
