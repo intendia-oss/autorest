@@ -116,7 +116,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                     if (xhr.readyState == XMLHttpRequest.DONE) {
                         if (isExpected(uri, xhr.status)) em.onSuccess(xhr);
                         else em.tryOnError(
-                                new RequestResponseException.FailedStatusCodeException(xhr.status, xhr.statusText));
+                                new RequestResponseException.FailedStatusCodeException(xhr.status, xhr.responseText, xhr.statusText));
                     }
                     return null;
                 };

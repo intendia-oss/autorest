@@ -12,12 +12,16 @@ public class RequestResponseException extends RuntimeException {
 
     public static class FailedStatusCodeException extends RequestResponseException {
         private final int status;
+        private final String responseText;
 
-        public FailedStatusCodeException(int status, String msg) {
+        public FailedStatusCodeException(int status, String responseText, String msg) {
             super(msg, null);
             this.status = status;
+            this.responseText = responseText;
         }
 
         public int getStatusCode() { return status; }
+
+        public String getResponseText() { return responseText; }
     }
 }
