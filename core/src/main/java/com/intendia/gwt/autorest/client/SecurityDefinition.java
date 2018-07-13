@@ -2,6 +2,7 @@ package com.intendia.gwt.autorest.client;
 
 public @interface SecurityDefinition {
 	public enum SecurityType {
+		UNDEFINED(""),
 	    BASIC("basic"),
 	    APIKEY("apiKey");
 	    private final String text;
@@ -10,6 +11,15 @@ public @interface SecurityDefinition {
 	    }
 	    public String toString() {
 	        return text;
+	    }
+	    public static SecurityType fromString(String txt) {
+	    	for(SecurityType st : values())
+	    	{
+	    		if(st.toString().equals(txt)) {
+	    			return st;
+	    		}
+	    	}
+	    	return UNDEFINED;
 	    }
 	}
 
@@ -23,6 +33,15 @@ public @interface SecurityDefinition {
 	    }
 	    public String toString() {
 	        return text;
+	    }
+	    public static Location fromString(String txt) {
+	    	for(Location loc : values())
+	    	{
+	    		if(loc.toString().equals(txt)) {
+	    			return loc;
+	    		}
+	    	}
+	    	return UNDEFINED;
 	    }
 	}
 	

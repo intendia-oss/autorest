@@ -89,8 +89,6 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     }
 
     private void processRestService(TypeElement restService) throws Exception {
-        final StringBuilder gSecurityDebug = new StringBuilder();
-
         String rsPath = restService.getAnnotation(Path.class).value();
         String[] produces = ofNullable(restService.getAnnotation(Produces.class)).map(Produces::value).orElse(EMPTY);
         String[] consumes = ofNullable(restService.getAnnotation(Consumes.class)).map(Consumes::value).orElse(EMPTY);
@@ -167,6 +165,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         .map(str -> "\"" + str + "\"").collect(Collectors.joining(", ")));
 
                 // security params
+                // TODO: At this point in time, we only accept an array of definitions and we and them all together
+                //    There is no support for OpenAPI OR'd securities
                 for(SecurityDefinition sd : methodSecurity) {
                 	switch(sd.type())
                 	{
@@ -186,6 +186,9 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 						break;
 					case BASIC:
 	                	builder.add(".header(\"Authorization\", \"Basic \"+getSecurityToken(\"$L\"))", sd.name());
+	                	break;
+                	default:
+						log("skipping security "+sd.name()+" on "+methodName+" with unknown type.");
 						break;
                 	}
             	};
@@ -215,7 +218,6 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         Filer filer = processingEnv.getFiler();
         JavaFile.Builder file = JavaFile.builder(rsName.packageName(), modelTypeBuilder.build());
         for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
-        file.addFileComment(gSecurityDebug.toString());
         file.build().writeTo(filer);
     }
 
