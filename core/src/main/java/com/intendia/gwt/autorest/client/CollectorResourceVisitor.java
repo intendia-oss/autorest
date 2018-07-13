@@ -50,7 +50,7 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     public ResourceVisitor path(String path) {
         if (path.endsWith("/")) path = path.substring(0, path.length() - 1); // strip off trailing slash
         if (path.matches(ABSOLUTE_PATH)) this.paths = new ArrayList<>(singleton(path)); // reset current path
-        else this.paths.add(path.startsWith("/") ? path : "/" + path);
+        else this.paths.add( (path.isEmpty() || path.startsWith("/")) ? path : "/" + path);
         return this;
     }
 
