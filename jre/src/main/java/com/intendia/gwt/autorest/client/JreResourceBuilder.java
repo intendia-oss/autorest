@@ -1,8 +1,5 @@
 package com.intendia.gwt.autorest.client;
 
-import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
-import static java.util.stream.Collectors.joining;
-
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import io.reactivex.Completable;
@@ -33,18 +30,13 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         path(root);
     }
 
-    private String encode(String key) {
-        try { return URLEncoder.encode(key, "UTF-8"); } catch (Exception e) { throw new RuntimeException(e); }
-    }
-
-    private String query() {
-        String q = "";
-        for (Param p : expand(queryParams)) q += (q.isEmpty() ? "" : "&") + encode(p.k) + "=" + encode(p.v.toString());
-        return q.isEmpty() ? "" : "?" + q;
-    }
-
-    private String uri() {
-        return paths.stream().collect(joining()) + query();
+    @Override protected String encodeComponent(String str) {
+        try {
+            return URLEncoder.encode(str, "UTF-8")
+                    .replaceAll("%21", "!").replaceAll("%27", "'")
+                    .replaceAll("%28", "(").replaceAll("%29", ")")
+                    .replaceAll("%7E", "~");
+        } catch (Exception e) { throw new RuntimeException(e); }
     }
 
     @Override public <T> T as(Class<? super T> container, Class<?> type) {
@@ -91,7 +83,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
 
     @FunctionalInterface
     public interface ConnectionFactory {
-        HttpURLConnection apply(String s) throws Exception;
+        HttpURLConnection apply(String uri) throws Exception;
     }
 
     public interface JsonCodec {

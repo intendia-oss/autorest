@@ -1,5 +1,8 @@
 package com.intendia.gwt.autorest.client;
 
+import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 
 import java.util.ArrayList;
@@ -11,6 +14,7 @@ import javax.ws.rs.HttpMethod;
 /* @Experimental */
 public abstract class CollectorResourceVisitor implements ResourceVisitor {
     private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
+    private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
 
     public static class Param {
         public final String k;
@@ -35,6 +39,7 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     protected String produces[] = { "application/json" };
     protected String consumes[] = { "application/json" };
     protected Object data = null;
+    private List<Integer> expectedStatuses = DEFAULT_EXPECTED_STATUS;
 
     @Override public ResourceVisitor method(String method) {
         Objects.requireNonNull(method, "path required");
@@ -85,6 +90,43 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     @Override public ResourceVisitor data(Object data) {
         this.data = data;
         return this;
+    }
+
+    public String method() { return method; }
+
+    public String uri() {
+        String path = "";
+        for (String p : paths) path += p;
+        return path + query();
+    }
+
+    public String query() {
+        String q = "";
+        for (Param p : expand(queryParams)) {
+            q += (q.isEmpty() ? "" : "&") + encodeComponent(p.k) + "=" + encodeComponent(Objects.toString(p.v));
+        }
+        return q.isEmpty() ? "" : "?" + q;
+    }
+
+    protected abstract String encodeComponent(String str);
+
+    /**
+     * Sets the expected response status code.  If the response status code does not match any of the values specified
+     * then the request is considered to have failed.  Defaults to accepting 200,201,204. If set to -1 then any status
+     * code is considered a success.
+     */
+    public CollectorResourceVisitor expect(Integer... statuses) {
+        if (statuses.length == 1 && statuses[0] < 0) expectedStatuses = emptyList();
+        else expectedStatuses = asList(statuses);
+        return this;
+    }
+
+    /**
+     * Local file-system (file://) does not return any status codes. Therefore - if we read from the file-system we
+     * accept all codes. This is for instance relevant when developing a PhoneGap application.
+     */
+    protected boolean isExpected(String url, int status) {
+        return url.startsWith("file") || expectedStatuses.isEmpty() || expectedStatuses.contains(status);
     }
 
     @Override public String toString() {
