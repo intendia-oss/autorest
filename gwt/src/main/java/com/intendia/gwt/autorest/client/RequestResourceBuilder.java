@@ -1,13 +1,14 @@
 package com.intendia.gwt.autorest.client;
 
-import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
-import static java.util.Arrays.asList;
+import static elemental2.core.Global.encodeURIComponent;
 import static java.util.Objects.requireNonNull;
 import static javax.ws.rs.core.HttpHeaders.ACCEPT;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.MULTIPART_FORM_DATA;
 
+import com.intendia.gwt.autorest.client.RequestResponseException.FailedStatusCodeException;
+import com.intendia.gwt.autorest.client.RequestResponseException.ResponseFormatException;
 import elemental2.core.Global;
 import elemental2.dom.FormData;
 import elemental2.dom.XMLHttpRequest;
@@ -15,62 +16,43 @@ import io.reactivex.Completable;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.functions.Consumer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import jsinterop.base.Js;
 
 @SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
-    private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
-    private static final Consumer<XMLHttpRequest> DEFAULT_DISPATCHER = request -> { /* no op */ };
+    public static final Function<RequestResourceBuilder, XMLHttpRequest> DEFAULT_REQUEST_FACTORY = data -> {
+        XMLHttpRequest xhr = new XMLHttpRequest(); xhr.open(data.method(), data.uri()); return xhr;
+    };
+    public static final BiFunction<Single<XMLHttpRequest>, RequestResourceBuilder, Single<XMLHttpRequest>> DEFAULT_REQUEST_TRANSFORMER = (xml, data) -> xml;
+    public static final Function<XMLHttpRequest, FailedStatusCodeException> DEFAULT_UNEXPECTED_MAPPER = xhr -> {
+        return new FailedStatusCodeException(xhr.status, xhr.statusText);
+    };
 
-    private Function<Integer, Boolean> expectedStatuses = DEFAULT_EXPECTED_STATUS::contains;
-    private Consumer<XMLHttpRequest> dispatcher = DEFAULT_DISPATCHER;
+    private Function<RequestResourceBuilder, XMLHttpRequest> requestFactory = DEFAULT_REQUEST_FACTORY;
+    private Function<XMLHttpRequest, FailedStatusCodeException> unexpectedMapper = DEFAULT_UNEXPECTED_MAPPER;
+    private BiFunction<Single<XMLHttpRequest>, RequestResourceBuilder, Single<XMLHttpRequest>> requestTransformer = DEFAULT_REQUEST_TRANSFORMER;
 
-    public String query() {
-        String q = "";
-        for (Param p : expand(queryParams)) q += (q.isEmpty() ? "" : "&") + encode(p.k) + "=" + encode(p.v.toString());
-        return q.isEmpty() ? "" : "?" + q;
+    @Override protected String encodeComponent(String str) { return encodeURIComponent(str).replaceAll("%20", "+"); }
+
+    public RequestResourceBuilder requestFactory(Function<RequestResourceBuilder, XMLHttpRequest> fn) {
+        this.requestFactory = fn; return this;
     }
 
-    private String encode(String decodedURLComponent) {
-        return Global.encodeURIComponent(decodedURLComponent).replaceAll("%20", "+");
+    public RequestResourceBuilder unexpectedMapper(Function<XMLHttpRequest, FailedStatusCodeException> fn) {
+        this.unexpectedMapper = fn; return this;
     }
 
-    public String uri() {
-        return Global.encodeURI(paths.stream().collect(Collectors.joining())) + query();
-    }
-
-    public RequestResourceBuilder dispatcher(Consumer<XMLHttpRequest> dispatcher) {
-        this.dispatcher = dispatcher;
-        return this;
-    }
-
-    /**
-     * Sets the expected response status code.  If the response status code does not match any of the values specified
-     * then the request is considered to have failed.  Defaults to accepting 200,201,204. If set to -1 then any status
-     * code is considered a success.
-     */
-    public RequestResourceBuilder expect(Integer... statuses) {
-        if (statuses.length == 1 && statuses[0] < 0) expectedStatuses = status -> true;
-        else expectedStatuses = asList(statuses)::contains;
-        return this;
-    }
-
-    /**
-     * Local file-system (file://) does not return any status codes. Therefore - if we read from the file-system we
-     * accept all codes. This is for instance relevant when developing a PhoneGap application.
-     */
-    private boolean isExpected(String url, int status) {
-        return url.startsWith("file") || expectedStatuses.apply(status);
+    public RequestResourceBuilder requestTransformer(
+            BiFunction<Single<XMLHttpRequest>, RequestResourceBuilder, Single<XMLHttpRequest>> fn) {
+        this.requestTransformer = fn; return this;
     }
 
     @SuppressWarnings("unchecked")
@@ -96,16 +78,13 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
             String text = ctx.response.asString();
             return text == null || text.isEmpty() ? null : Js.cast(Global.JSON.parse(text));
         } catch (Throwable e) {
-            throw new RequestResponseException.ResponseFormatException("Parsing response error", e);
+            throw new ResponseFormatException("Parsing response error", e);
         }
     }
 
     public Single<XMLHttpRequest> request() {
-        return Single.create(em -> {
-            String uri = uri();
-            XMLHttpRequest xhr = new XMLHttpRequest();
-            xhr.open(method, uri);
-
+        return Single.<XMLHttpRequest>create(em -> {
+            XMLHttpRequest xhr = requestFactory.apply(this);
             Map<String, String> headers = new HashMap<>();
             for (Param h : headerParams) headers.put(h.k, Objects.toString(h.v));
             for (Map.Entry<String, String> h : headers.entrySet()) xhr.setRequestHeader(h.getKey(), h.getValue());
@@ -114,17 +93,14 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
                 xhr.onreadystatechange = evt -> {
                     if (em.isDisposed()) return null;
                     if (xhr.readyState == XMLHttpRequest.DONE) {
-                        if (isExpected(uri, xhr.status)) em.onSuccess(xhr);
-                        else em.tryOnError(
-                                new RequestResponseException.FailedStatusCodeException(xhr.status, xhr.responseText, xhr.statusText));
+                        if (isExpected(uri(), xhr.status)) em.onSuccess(xhr);
+                        else em.tryOnError(unexpectedMapper.apply(xhr));
                     }
                     return null;
                 };
                 em.setCancellable(() -> {
                     if (xhr.readyState != XMLHttpRequest.DONE) xhr.abort();
                 });
-
-                dispatcher.accept(xhr);
 
                 if (!formParams.isEmpty()) {
                     xhr.setRequestHeader(CONTENT_TYPE, MULTIPART_FORM_DATA);
@@ -140,6 +116,6 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
             } catch (Throwable e) {
                 em.tryOnError(new RequestResponseException("", e));
             }
-        });
+        }).compose(o -> requestTransformer.apply(o, this));
     }
 }
