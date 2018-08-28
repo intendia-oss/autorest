@@ -7,7 +7,7 @@ public class RequestResponseException extends RuntimeException {
 
     public static class ResponseFormatException extends RequestResponseException {
 
-        public ResponseFormatException(String msg, Throwable e) { super(msg, e); }
+        public ResponseFormatException(String msg, Throwable cause) { super(msg, cause); }
     }
 
     public static class FailedStatusCodeException extends RequestResponseException {

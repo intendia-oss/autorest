@@ -29,6 +29,7 @@ import com.squareup.javapoet.TypeSpec;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -132,7 +133,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 // method type
                 builder.add("method($L)", methodImport(methodImports, method.getAnnotationMirrors().stream()
                         .map(a -> asElement(a.getAnnotationType()).getAnnotation(HttpMethod.class))
-                        .filter(a -> a != null).map(HttpMethod::value).findFirst().orElse(GET)));
+                        .filter(Objects::nonNull).map(HttpMethod::value).findFirst().orElse(GET)));
                 // resolve paths
                 builder.add(".path($L)", Arrays
                         .stream(ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse("").split("/"))
@@ -162,7 +163,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 method.getParameters().stream().filter(p -> p.getAnnotation(FormParam.class) != null).forEach(p ->
                         builder.add(".form($S, $L)", p.getAnnotation(FormParam.class).value(), p.getSimpleName()));
                 // data
-                method.getParameters().stream().filter(this::isParam).findFirst()
+                method.getParameters().stream().filter(p -> !isParam(p)).findFirst()
                         .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
             }
             builder.add(".as($T.class, $T.class);\n$]",
@@ -188,12 +189,12 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     }
 
     public boolean isParam(VariableElement a) {
-        return a.getAnnotation(CookieParam.class) == null
-                && a.getAnnotation(FormParam.class) == null
-                && a.getAnnotation(HeaderParam.class) == null
-                && a.getAnnotation(MatrixParam.class) == null
-                && a.getAnnotation(PathParam.class) == null
-                && a.getAnnotation(QueryParam.class) == null;
+        return a.getAnnotation(CookieParam.class) != null
+                || a.getAnnotation(FormParam.class) != null
+                || a.getAnnotation(HeaderParam.class) != null
+                || a.getAnnotation(MatrixParam.class) != null
+                || a.getAnnotation(PathParam.class) != null
+                || a.getAnnotation(QueryParam.class) != null;
     }
 
     private Optional<? extends AnnotationMirror> isIncompatible(ExecutableElement method) {
