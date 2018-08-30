@@ -15,6 +15,7 @@ import java.net.URLEncoder;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 public class JreResourceBuilder extends CollectorResourceVisitor {
     private final ConnectionFactory factory;
@@ -50,15 +51,26 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
                 req = factory.apply(uri());
                 req.setRequestMethod(method);
                 if (produces.length > 0) req.setRequestProperty("Accept", produces[0]);
-                if (consumes.length > 0) req.setRequestProperty("Content-Type", consumes[0]);
                 for (Param e : headerParams) req.setRequestProperty(e.k, Objects.toString(e.v));
             } catch (Exception e) {
                 throw err("open connection error", e);
             }
             if (data != null) {
+                req.setRequestProperty("Content-Type", Stream.of(consumes).findFirst()
+                        .orElse("application/json"));
                 req.setDoOutput(true);
                 try (OutputStreamWriter out = new OutputStreamWriter(req.getOutputStream())) {
                     json.toJson(data, out);
+                } catch (Exception e) {
+                    throw err("writing stream error", e);
+                }
+            } else if (!formParams.isEmpty()) {
+                req.setRequestProperty("Content-Type", Stream.of(consumes).findFirst()
+                        .orElse("application/x-www-form-urlencoded"));
+                req.setDoOutput(true);
+                try (OutputStreamWriter out = new OutputStreamWriter(req.getOutputStream())) {
+                    String csq = encodeParams(formParams);
+                    out.append(csq);
                 } catch (Exception e) {
                     throw err("writing stream error", e);
                 }

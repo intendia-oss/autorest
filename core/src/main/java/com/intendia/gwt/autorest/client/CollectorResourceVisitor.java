@@ -101,11 +101,16 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     }
 
     public String query() {
+        String q = encodeParams(queryParams);
+        return q.isEmpty() ? "" : "?" + q;
+    }
+
+    protected String encodeParams(List<Param> params) {
         String q = "";
-        for (Param p : expand(queryParams)) {
+        for (Param p : expand(params)) {
             q += (q.isEmpty() ? "" : "&") + encodeComponent(p.k) + "=" + encodeComponent(Objects.toString(p.v));
         }
-        return q.isEmpty() ? "" : "?" + q;
+        return q;
     }
 
     protected abstract String encodeComponent(String str);
