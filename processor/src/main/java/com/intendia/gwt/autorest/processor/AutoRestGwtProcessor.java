@@ -177,7 +177,8 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         Filer filer = processingEnv.getFiler();
         JavaFile.Builder file = JavaFile.builder(rsName.packageName(), modelTypeBuilder.build());
         for (String methodImport : methodImports) file.addStaticImport(HttpMethod.class, methodImport);
-        file.build().writeTo(filer);
+        boolean skipJavaLangImports = processingEnv.getOptions().containsKey("skipJavaLangImports");
+        file.skipJavaLangImports(skipJavaLangImports).build().writeTo(filer);
     }
 
     private String methodImport(Set<String> methodImports, String method) {
