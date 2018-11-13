@@ -2,6 +2,9 @@ package com.intendia.gwt.autorest.example.client;
 
 import static jsinterop.annotations.JsPackage.GLOBAL;
 
+import java.util.List;
+import java.util.Map;
+
 import com.intendia.gwt.autorest.client.AutoRestGwt;
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
@@ -33,7 +36,23 @@ public interface ExampleService {
             @PathParam("foo") String foo,
             @QueryParam("bar") String bar,
             @QueryParam("unk") String oth);
-
+    
+    @GET @Path("observable/foo/{foo}") Greeting getFoo(
+            @PathParam("foo") String foo,
+            @QueryParam("bar") String bar,
+            @QueryParam("unk") Integer anInt,
+            @QueryParam("iii") int i,
+            @QueryParam("greeting") Greeting g);
+    
+    @GET @Path("observable/foo/{foo}") Greeting getFoo(
+    		@PathParam("foo") String foo,
+            @QueryParam("unk") List<String> oth,
+            @QueryParam("greeting") List<Map<String, Greeting>> g);
+    
+    @POST @Path("observable/foo/{foo}") Greeting getFoo4(
+    		@PathParam("foo") String foo,
+            List<Greeting> oth[]);
+    
     @JsType(namespace = GLOBAL, name = "Object", isNative = true) class Greeting {
         public String greeting;
     }

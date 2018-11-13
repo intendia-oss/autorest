@@ -56,21 +56,21 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     }
 
     @SuppressWarnings("unchecked")
-    @Override public <T> T as(Class<? super T> container, Class<?> type) {
-        if (Completable.class.equals(container)) return (T) request().toCompletable();
-        if (Maybe.class.equals(container)) return (T) request().flatMapMaybe(ctx -> {
+    @Override public <T> T as(Type type) {
+        if (Completable.class.equals(type.getClazz())) return (T) request().toCompletable();
+        if (Maybe.class.equals(type.getClazz())) return (T) request().flatMapMaybe(ctx -> {
             @Nullable Object decode = decode(ctx);
             return decode == null ? Maybe.empty() : Maybe.just(decode);
         });
-        if (Single.class.equals(container)) return (T) request().map(ctx -> {
+        if (Single.class.equals(type.getClazz())) return (T) request().map(ctx -> {
             @Nullable Object decode = decode(ctx);
             return requireNonNull(decode, "null response forbidden, use Maybe instead");
         });
-        if (Observable.class.equals(container)) return (T) request().toObservable().flatMapIterable(ctx -> {
+        if (Observable.class.equals(type.getClazz())) return (T) request().toObservable().flatMapIterable(ctx -> {
             @Nullable Object[] decode = decode(ctx);
             return decode == null ? Collections.emptyList() : Arrays.asList(decode);
         });
-        throw new UnsupportedOperationException("unsupported type " + container);
+        throw new UnsupportedOperationException("unsupported type " + type.getClazz());
     }
 
     private @Nullable <T> T decode(XMLHttpRequest ctx) {

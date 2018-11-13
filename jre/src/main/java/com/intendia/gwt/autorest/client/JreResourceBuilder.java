@@ -40,8 +40,11 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         } catch (Exception e) { throw new RuntimeException(e); }
     }
 
-    @Override public <T> T as(Class<? super T> container, Class<?> type) {
-        return json.fromJson(request(), container, type);
+    @Override public <T> T as(Type type) {
+        return json.fromJson(
+        		request(), 
+        		type.getClazz(), 
+        		!type.getTypeParams().isEmpty()? type.getTypeParams().get(0).getClazz(): Void.class);
     }
 
     private Single<Reader> request() {
@@ -100,7 +103,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
 
     public interface JsonCodec {
         void toJson(Object src, Appendable writer);
-        <C> C fromJson(Single<Reader> json, Class<? super C> container, Class<?> type);
+        <C> C fromJson(Single<Reader> json, Class<?> container, Class<?> type);
     }
 
     public static class GsonCodec implements JsonCodec {
@@ -111,7 +114,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         }
 
         @SuppressWarnings("unchecked")
-        @Override public <T> T fromJson(Single<Reader> req, Class<? super T> container, Class<?> type) {
+        @Override public <T> T fromJson(Single<Reader> req, Class<?> container, Class<?> type) {
             if (Completable.class.equals(container)) return (T) req.doOnSuccess(this::consume).toCompletable();
             if (Single.class.equals(container)) return (T) req.map(reader -> {
                 if (Reader.class.equals(type)) return reader;

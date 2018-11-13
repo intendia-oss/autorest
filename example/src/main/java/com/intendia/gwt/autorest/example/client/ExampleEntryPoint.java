@@ -14,6 +14,7 @@ import com.google.gwt.user.client.ui.TextBox;
 import com.google.web.bindery.event.shared.HandlerRegistration;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
+import com.intendia.gwt.autorest.client.Type;
 import com.intendia.gwt.autorest.example.client.ExampleService.Greeting;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
@@ -27,7 +28,7 @@ public class ExampleEntryPoint implements EntryPoint {
         HTML out = append(new HTML());
 
         ResourceVisitor.Supplier getApi = () -> new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api");
-        ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok"));
+        ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok", Type.undefined()));
 
         Observable.merge(valueChange(name), keyUp(name)).map(e -> name.getValue())
                 .switchMap(q -> {

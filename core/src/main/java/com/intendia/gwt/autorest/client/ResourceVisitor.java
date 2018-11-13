@@ -17,20 +17,20 @@ public interface ResourceVisitor {
     /** Sets the consumed media-type. */
     ResourceVisitor consumes(String... consumes);
 
-    /** Sets a query param. */
-    ResourceVisitor param(String key, @Nullable Object value);
+    /** Sets a query param with its type */
+    ResourceVisitor param(String key, @Nullable Object value, Type type);
 
-    /** Sets a header param. */
-    ResourceVisitor header(String key, @Nullable Object value);
+    /** Sets a header param with its type. */
+    ResourceVisitor header(String key, @Nullable Object value, Type type);
 
-    /** Sets a from param. */
-    ResourceVisitor form(String key, @Nullable Object value);
+    /** Sets a from param with its type. */
+    ResourceVisitor form(String key, @Nullable Object value, Type type);
+    
+    /** Sets the content data with its type. */
+    ResourceVisitor data(Object data, Type typeInfo);
 
-    /** Sets the content data. */
-    ResourceVisitor data(Object data);
-
-    /** Wrap the current resource state into a {@code container}. */
-    <T> T as(Class<? super T> container, Class<?> type);
+    /** Wrap the current resource state into a {@code type}. */
+    <T> T as(Type type);
 
     interface Supplier {
         ResourceVisitor get();

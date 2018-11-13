@@ -14,11 +14,11 @@ import static javax.ws.rs.HttpMethod.OPTIONS;
 import static javax.ws.rs.HttpMethod.POST;
 import static javax.ws.rs.HttpMethod.PUT;
 
-import com.google.auto.common.MoreTypes;
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import com.intendia.gwt.autorest.client.RestServiceModel;
+import com.intendia.gwt.autorest.client.Type;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -40,11 +40,20 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.inject.Inject;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ErrorType;
+import javax.lang.model.type.PrimitiveType;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
+import javax.lang.model.util.SimpleTypeVisitor6;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.CookieParam;
@@ -100,7 +109,10 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .superclass(RestServiceModel.class)
                 .addSuperinterface(TypeName.get(restService.asType()));
-
+        
+        //Not a brilliant way to get import for Type (kind of deficiency in javapoet)
+        modelTypeBuilder.addStaticBlock(CodeBlock.builder().addStatement("$T dummy = null", Type.class).build());
+        
         modelTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addAnnotation(Inject.class)
                 .addModifiers(PUBLIC)
@@ -155,21 +167,18 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         .map(str -> "\"" + str + "\"").collect(Collectors.joining(", ")));
                 // query params
                 method.getParameters().stream().filter(p -> p.getAnnotation(QueryParam.class) != null).forEach(p ->
-                        builder.add(".param($S, $L)", p.getAnnotation(QueryParam.class).value(), p.getSimpleName()));
+                		builder.add(".param($S, $L, $L)", p.getAnnotation(QueryParam.class).value(), p.getSimpleName(), createTypeInfo(p.asType())));
                 // header params
                 method.getParameters().stream().filter(p -> p.getAnnotation(HeaderParam.class) != null).forEach(p ->
-                        builder.add(".header($S, $L)", p.getAnnotation(HeaderParam.class).value(), p.getSimpleName()));
+                		builder.add(".header($S, $L, $L)", p.getAnnotation(HeaderParam.class).value(), p.getSimpleName(), createTypeInfo(p.asType())));
                 // form params
                 method.getParameters().stream().filter(p -> p.getAnnotation(FormParam.class) != null).forEach(p ->
-                        builder.add(".form($S, $L)", p.getAnnotation(FormParam.class).value(), p.getSimpleName()));
+                	 	builder.add(".form($S, $L, $L)", p.getAnnotation(FormParam.class).value(), p.getSimpleName(), createTypeInfo(p.asType())));
                 // data
                 method.getParameters().stream().filter(p -> !isParam(p)).findFirst()
-                        .ifPresent(data -> builder.add(".data($L)", data.getSimpleName()));
+                	.ifPresent(data -> builder.add(".data($L, $L)", data.getSimpleName(), createTypeInfo(data.asType())));
             }
-            builder.add(".as($T.class, $T.class);\n$]",
-                    processingEnv.getTypeUtils().erasure(method.getReturnType()),
-                    MoreTypes.asDeclared(method.getReturnType()).getTypeArguments().stream().findFirst()
-                            .map(TypeName::get).orElse(TypeName.get(Void.class)));
+            builder.add(".as($L);\n$]",createTypeInfo(method.getReturnType()));
 
             modelTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
         }
@@ -180,6 +189,81 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         boolean skipJavaLangImports = processingEnv.getOptions().containsKey("skipJavaLangImports");
         file.skipJavaLangImports(skipJavaLangImports).build().writeTo(filer);
     }
+
+    private String createTypeInfo(TypeMirror type) {
+    	StringBuilder result = new StringBuilder();
+    	processType(type, result);
+    	
+    	return result.toString();
+    }
+    
+    private void processType(TypeMirror type, StringBuilder result) {
+		type.accept(new SimpleTypeVisitor6<Void, Void>() {
+			
+			private PackageElement getPackage(Element type) {
+			    while (type.getKind() != ElementKind.PACKAGE) {
+			      type = type.getEnclosingElement();
+			    }
+
+			    return (PackageElement) type;
+			}
+			
+			private String getTypeName(TypeElement type) {
+				String packageName = getPackage(type).getQualifiedName().toString();
+				String qualifiedName = type.getQualifiedName().toString();
+				return qualifiedName.substring(packageName.length() !=0? packageName.length() + 1: 0);
+			}
+			
+			@Override
+			public Void visitDeclared(DeclaredType declaredType, Void v) {
+				result.append("Type.of(");
+				result.append(getTypeName((TypeElement) declaredType.asElement()));
+				result.append(".class)");
+
+				for (TypeMirror type: declaredType.getTypeArguments()) {
+					result.append(".typeParam(");
+					processType(type, result);
+					result.append(")");
+				}
+				
+				return null;
+			}
+
+			@Override
+			public Void visitPrimitive(PrimitiveType primitiveType, Void v) {
+				result.append("Type.of(");
+				result.append(primitiveType);
+				result.append(".class)");
+				return null; 
+			}
+
+			@Override
+			public Void visitArray(ArrayType arrayType, Void v) {
+				result.append("Type.array(");
+				processType(arrayType.getComponentType(), result);
+				result.append(")");
+				
+				return null;
+			}
+
+			@Override
+			public Void visitTypeVariable(TypeVariable typeVariable, Void v) {
+				processType(processingEnv.getTypeUtils().erasure(typeVariable), result);
+				return null;
+			}
+
+			@Override
+			public Void visitError(ErrorType errorType, Void v) { 
+				return null;
+			}
+
+			@Override
+			protected Void defaultAction(TypeMirror typeMirror, Void v) { 
+				return null;
+			}
+		},
+		null);
+	}
 
     private String methodImport(Set<String> methodImports, String method) {
         if (HTTP_METHODS.contains(method)) {

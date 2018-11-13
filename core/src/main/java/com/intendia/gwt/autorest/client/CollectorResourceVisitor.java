@@ -19,7 +19,10 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     public static class Param {
         public final String k;
         public final Object v;
-        public Param(String k, Object v) { this.k = k; this.v = v; }
+        public final Type t;
+        public Param(String k, Object v) { this(k, v, Type.undefined()); }
+        public Param(String k, Object v, Type t) { this.k = k; this.v = v; this.t = t;}
+        
         public static List<Param> expand(List<Param> in) {
             List<Param> out = new ArrayList<>();
             for (Param p : in) {
@@ -28,7 +31,7 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
             }
             return out;
         }
-        @Override public String toString() { return "Param{k='" + k + "', v=" + v + '}'; }
+        @Override public String toString() { return "Param{k='" + k + "', v=" + v + ", t='" + t + '}'; }
     }
 
     protected List<String> paths = new ArrayList<>();
@@ -39,6 +42,7 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     protected String produces[] = { "application/json" };
     protected String consumes[] = { "application/json" };
     protected Object data = null;
+    protected Type dataType;
     private List<Integer> expectedStatuses = DEFAULT_EXPECTED_STATUS;
 
     @Override public ResourceVisitor method(String method) {
@@ -69,26 +73,27 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
         return this;
     }
 
-    @Override public ResourceVisitor param(String key, @Nullable Object value) {
+    @Override public ResourceVisitor param(String key, @Nullable Object value, Type type) {
         Objects.requireNonNull(key, "query param key required");
-        if (value != null) queryParams.add(new Param(key, value));
+        if (value != null) queryParams.add(new Param(key, value, type));
         return this;
     }
 
-    @Override public ResourceVisitor header(String key, @Nullable Object value) {
+    @Override public ResourceVisitor header(String key, @Nullable Object value, Type type) {
         Objects.requireNonNull(key, "header param key required");
-        if (value != null) headerParams.add(new Param(key, value));
+        if (value != null) headerParams.add(new Param(key, value, type));
         return this;
     }
 
-    @Override public ResourceVisitor form(String key, @Nullable Object value) {
+    @Override public ResourceVisitor form(String key, @Nullable Object value, Type type) {
         Objects.requireNonNull(key, "form param key required");
-        if (value != null) formParams.add(new Param(key, value));
+        if (value != null) formParams.add(new Param(key, value, type));
         return this;
     }
 
-    @Override public ResourceVisitor data(Object data) {
+    @Override public ResourceVisitor data(Object data, Type type) {
         this.data = data;
+        this.dataType = type;
         return this;
     }
 
