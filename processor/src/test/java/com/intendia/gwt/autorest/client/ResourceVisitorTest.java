@@ -32,7 +32,7 @@ public class ResourceVisitorTest {
 
     @Test public void visitor_works() throws Exception {
         ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
-        when(visitor.as(Type.of(List.class).typeParam(Type.of(String.class)))).thenReturn(singletonList("done"));
+        when(visitor.as(new TypeToken<List<String>>(List.class, TypeToken.of(String.class)) {})).thenReturn(singletonList("done"));
         TestService service = new TestService_RestServiceModel(() -> visitor);
         service.method("s", 1, "s", 1,  asList(1, 2 ,3), new Integer[]{ 1, 2, 3},  "s", 1);
         InOrder inOrder = inOrder(visitor);
@@ -40,13 +40,13 @@ public class ResourceVisitorTest {
         inOrder.verify(visitor).path("b", "s", 1, "c");
         inOrder.verify(visitor).produces("application/json");
         inOrder.verify(visitor).consumes("application/json");
-        inOrder.verify(visitor).param("qS", "s", Type.of(String.class));
-        inOrder.verify(visitor).param("qI", 1, Type.of(int.class));
-        inOrder.verify(visitor).param("qIs", asList(1, 2, 3), Type.of(List.class).typeParam(Type.of(Integer.class)));
-        inOrder.verify(visitor).param("qIa", new Integer[] {1, 2, 3}, Type.array(Type.of(Integer.class)));
-        inOrder.verify(visitor).header("hS", "s", Type.of(String.class));
-        inOrder.verify(visitor).header("hI", 1, Type.of(int.class));
-        inOrder.verify(visitor).as(Type.of(List.class).typeParam(Type.of(String.class)));
+        inOrder.verify(visitor).param("qS", "s", TypeToken.of(String.class));
+        inOrder.verify(visitor).param("qI", 1, TypeToken.of(Integer.class));
+        inOrder.verify(visitor).param("qIs", asList(1, 2, 3), new TypeToken<List<Integer>>(List.class, TypeToken.of(Integer.class)) {});
+        inOrder.verify(visitor).param("qIa", new Integer[] {1, 2, 3}, TypeToken.of(Integer[].class));
+        inOrder.verify(visitor).header("hS", "s", TypeToken.of(String.class));
+        inOrder.verify(visitor).header("hI", 1, TypeToken.of(Integer.class));
+        inOrder.verify(visitor).as(new TypeToken<List<String>>(List.class, TypeToken.of(String.class)) {});
         inOrder.verifyNoMoreInteractions();
     }
 

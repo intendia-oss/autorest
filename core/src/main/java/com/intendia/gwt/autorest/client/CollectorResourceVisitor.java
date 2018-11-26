@@ -8,6 +8,7 @@ import static java.util.Collections.singleton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
 import javax.annotation.Nullable;
 import javax.ws.rs.HttpMethod;
 
@@ -16,33 +17,31 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
 
-    public static class Param {
+    public static class Param<T> {
         public final String k;
-        public final Object v;
-        public final Type t;
-        public Param(String k, Object v) { this(k, v, Type.undefined()); }
-        public Param(String k, Object v, Type t) { this.k = k; this.v = v; this.t = t;}
+        public final T v;
+        public final TypeToken<T> t;
+        public Param(String k, T v, TypeToken<T> t) { this.k = k; this.v = v; this.t = t; }
         
-        public static List<Param> expand(List<Param> in) {
-            List<Param> out = new ArrayList<>();
-            for (Param p : in) {
+        public static List<Param<?>> expand(List<Param<?>> in) {
+            List<Param<?>> out = new ArrayList<>();
+            for (Param<?> p : in) {
                 if (!(p.v instanceof Iterable<?>)) out.add(p);
-                else for (Object v : ((Iterable<?>) p.v)) out.add(new Param(p.k, v));
+                else for (Object v : ((Iterable<?>) p.v)) out.add(new Param<Object>(p.k, v, null));
             }
             return out;
         }
         @Override public String toString() { return "Param{k='" + k + "', v=" + v + ", t='" + t + '}'; }
     }
 
-    protected List<String> paths = new ArrayList<>();
-    protected List<Param> queryParams = new ArrayList<>();
-    protected List<Param> headerParams = new ArrayList<>();
-    protected List<Param> formParams = new ArrayList<>();
+    protected List<Object> paths = new ArrayList<>();
+    protected List<Param<?>> queryParams = new ArrayList<>();
+    protected List<Param<?>> headerParams = new ArrayList<>();
+    protected List<Param<?>> formParams = new ArrayList<>();
     protected String method = HttpMethod.GET;
     protected String produces[] = { "application/json" };
     protected String consumes[] = { "application/json" };
-    protected Object data = null;
-    protected Type dataType;
+    protected Param<?> data = null;
     private List<Integer> expectedStatuses = DEFAULT_EXPECTED_STATUS;
 
     @Override public ResourceVisitor method(String method) {
@@ -63,6 +62,11 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
         return this;
     }
 
+    @Override public <T> ResourceVisitor path(@Nullable T value, TypeToken<T> typeToken) {
+        if (value != null) paths.add(new Param<>(null, value, typeToken));
+        return this;
+    }
+
     @Override public ResourceVisitor produces(String... produces) {
         if (produces.length > 0 /*0 means undefined, so do not override default*/) this.produces = produces;
         return this;
@@ -73,27 +77,26 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
         return this;
     }
 
-    @Override public ResourceVisitor param(String key, @Nullable Object value, Type type) {
+    @Override public <T> ResourceVisitor param(String key, @Nullable T value, TypeToken<T> typeToken) {
         Objects.requireNonNull(key, "query param key required");
-        if (value != null) queryParams.add(new Param(key, value, type));
+        if (value != null) queryParams.add(new Param<>(key, value, typeToken));
         return this;
     }
 
-    @Override public ResourceVisitor header(String key, @Nullable Object value, Type type) {
+    @Override public <T> ResourceVisitor header(String key, @Nullable T value, TypeToken<T> typeToken) {
         Objects.requireNonNull(key, "header param key required");
-        if (value != null) headerParams.add(new Param(key, value, type));
+        if (value != null) headerParams.add(new Param<>(key, value, typeToken));
         return this;
     }
 
-    @Override public ResourceVisitor form(String key, @Nullable Object value, Type type) {
+    @Override public <T> ResourceVisitor form(String key, @Nullable T value, TypeToken<T> typeToken) {
         Objects.requireNonNull(key, "form param key required");
-        if (value != null) formParams.add(new Param(key, value, type));
+        if (value != null) formParams.add(new Param<>(key, value, typeToken));
         return this;
     }
 
-    @Override public ResourceVisitor data(Object data, Type type) {
-        this.data = data;
-        this.dataType = type;
+    @Override public <T> ResourceVisitor data(T data, TypeToken<T> typeToken) {
+        this.data = new Param<>(null, data, typeToken);
         return this;
     }
 
@@ -101,7 +104,14 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
 
     public String uri() {
         String path = "";
-        for (String p : paths) path += p;
+        for (Object p : paths) {
+        	if (p instanceof Param<?>) {
+        		Param<?> param = (Param<?>)p;
+        		path += encodeComponent(Objects.toString(param.v));
+        	} else
+        		path += p;
+        }
+        
         return path + query();
     }
 
@@ -110,9 +120,9 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
         return q.isEmpty() ? "" : "?" + q;
     }
 
-    protected String encodeParams(List<Param> params) {
+    protected String encodeParams(List<Param<?>> params) {
         String q = "";
-        for (Param p : expand(params)) {
+        for (Param<?> p : expand(params)) {
             q += (q.isEmpty() ? "" : "&") + encodeComponent(p.k) + "=" + encodeComponent(Objects.toString(p.v));
         }
         return q;

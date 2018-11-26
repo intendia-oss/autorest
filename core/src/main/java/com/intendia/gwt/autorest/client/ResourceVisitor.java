@@ -11,6 +11,9 @@ public interface ResourceVisitor {
     /** Append paths, or set if the path is absolute. */
     ResourceVisitor path(Object... paths);
 
+    /** Sets a path param with its type */
+    <T> ResourceVisitor path(@Nullable T value, TypeToken<T> typeToken);
+    
     /** Sets the produced media-type. */
     ResourceVisitor produces(String... produces);
 
@@ -18,19 +21,19 @@ public interface ResourceVisitor {
     ResourceVisitor consumes(String... consumes);
 
     /** Sets a query param with its type */
-    ResourceVisitor param(String key, @Nullable Object value, Type type);
+    <T> ResourceVisitor param(String key, @Nullable T value, TypeToken<T> typeToken);
 
     /** Sets a header param with its type. */
-    ResourceVisitor header(String key, @Nullable Object value, Type type);
+    <T> ResourceVisitor header(String key, @Nullable T value, TypeToken<T> typeToken);
 
-    /** Sets a from param with its type. */
-    ResourceVisitor form(String key, @Nullable Object value, Type type);
+    /** Sets a form param with its type. */
+    <T> ResourceVisitor form(String key, @Nullable T value, TypeToken<T> typeToken);
     
     /** Sets the content data with its type. */
-    ResourceVisitor data(Object data, Type typeInfo);
+    <T> ResourceVisitor data(T data, TypeToken<T> typeToken);
 
     /** Wrap the current resource state into a {@code type}. */
-    <T> T as(Type type);
+    <T> T as(TypeToken<T> typeToken);
 
     interface Supplier {
         ResourceVisitor get();

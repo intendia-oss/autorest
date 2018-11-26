@@ -7,15 +7,6 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.MULTIPART_FORM_DATA;
 
-import com.intendia.gwt.autorest.client.RequestResponseException.FailedStatusCodeException;
-import com.intendia.gwt.autorest.client.RequestResponseException.ResponseFormatException;
-import elemental2.core.Global;
-import elemental2.dom.FormData;
-import elemental2.dom.XMLHttpRequest;
-import io.reactivex.Completable;
-import io.reactivex.Maybe;
-import io.reactivex.Observable;
-import io.reactivex.Single;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,10 +14,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+
 import javax.annotation.Nullable;
+
+import com.intendia.gwt.autorest.client.RequestResponseException.FailedStatusCodeException;
+import com.intendia.gwt.autorest.client.RequestResponseException.ResponseFormatException;
+
+import elemental2.core.Global;
+import elemental2.dom.FormData;
+import elemental2.dom.XMLHttpRequest;
+import io.reactivex.Completable;
+import io.reactivex.Maybe;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import jsinterop.base.Js;
 
-@SuppressWarnings("GwtInconsistentSerializableClass")
 public class RequestResourceBuilder extends CollectorResourceVisitor {
     public static final Function<RequestResourceBuilder, XMLHttpRequest> DEFAULT_REQUEST_FACTORY = data -> {
         XMLHttpRequest xhr = new XMLHttpRequest(); xhr.open(data.method(), data.uri()); return xhr;
@@ -56,21 +58,22 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     }
 
     @SuppressWarnings("unchecked")
-    @Override public <T> T as(Type type) {
-        if (Completable.class.equals(type.getClazz())) return (T) request().toCompletable();
-        if (Maybe.class.equals(type.getClazz())) return (T) request().flatMapMaybe(ctx -> {
+    @Override public <T> T as(TypeToken<T> typeToken) {
+    	if (Completable.class.equals(typeToken.getRawType())) return (T) request().toCompletable();
+        if (Maybe.class.equals(typeToken.getRawType())) return (T) request().flatMapMaybe(ctx -> {
             @Nullable Object decode = decode(ctx);
             return decode == null ? Maybe.empty() : Maybe.just(decode);
         });
-        if (Single.class.equals(type.getClazz())) return (T) request().map(ctx -> {
+        if (Single.class.equals(typeToken.getRawType())) return (T) request().map(ctx -> {
             @Nullable Object decode = decode(ctx);
             return requireNonNull(decode, "null response forbidden, use Maybe instead");
         });
-        if (Observable.class.equals(type.getClazz())) return (T) request().toObservable().flatMapIterable(ctx -> {
+        if (Observable.class.equals(typeToken.getRawType())) return (T) request().toObservable().flatMapIterable(ctx -> {
             @Nullable Object[] decode = decode(ctx);
             return decode == null ? Collections.emptyList() : Arrays.asList(decode);
         });
-        throw new UnsupportedOperationException("unsupported type " + type.getClazz());
+    	
+        throw new UnsupportedOperationException("unsupported type " + typeToken);
     }
 
     private @Nullable <T> T decode(XMLHttpRequest ctx) {
@@ -86,7 +89,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
         return Single.<XMLHttpRequest>create(em -> {
             XMLHttpRequest xhr = requestFactory.apply(this);
             Map<String, String> headers = new HashMap<>();
-            for (Param h : headerParams) headers.put(h.k, Objects.toString(h.v));
+            for (Param<?> h : headerParams) headers.put(h.k, Objects.toString(h.v));
             for (Map.Entry<String, String> h : headers.entrySet()) xhr.setRequestHeader(h.getKey(), h.getValue());
 
             try {

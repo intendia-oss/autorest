@@ -28,11 +28,15 @@
             <version>2.8.2</version>
         </dependency>
         <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>jsr311-api</artifactId>
+        </dependency>
+        <!--  <dependency>
             <groupId>com.intendia.gwt.autorest</groupId>
             <artifactId>autorest-processor</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
-        </dependency>
+        </dependency> -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
