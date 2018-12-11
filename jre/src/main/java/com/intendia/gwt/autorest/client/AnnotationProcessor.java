@@ -5,9 +5,11 @@ import static javax.ws.rs.HttpMethod.GET;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.ws.rs.Consumes;
@@ -84,6 +86,8 @@ public class AnnotationProcessor {
     }
     
     public Stream<Object> getPaths(Stream<? extends Entry<Integer, AnnotatedElement>> parameters) {
+    	List<? extends Entry<Integer, AnnotatedElement>> paramList = parameters.collect(Collectors.toList());
+
     	return Arrays.stream(
 	    		ofNullable(annotatedElement.getAnnotation(Path.class))
 	    			.map(Path::value)
@@ -92,7 +96,7 @@ public class AnnotationProcessor {
 			.filter(s -> !s.isEmpty())
 			.map(path -> !path.startsWith("{")? 
 				(Object)path: 
-				parameters
+				paramList.stream()
 					.filter(entry -> ofNullable(entry.getValue().getAnnotation(PathParam.class))
 						.map(PathParam::value)
 						.map(v -> path.equals("{" + v + "}"))

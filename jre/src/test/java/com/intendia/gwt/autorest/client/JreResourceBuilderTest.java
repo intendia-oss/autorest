@@ -58,7 +58,7 @@ public class JreResourceBuilderTest {
     }
 
     protected TestRestService createRestService(ResourceVisitor.Supplier path) {
-        return new TestRestService_RestServiceModel(path);
+    	return AutorestProxy.create(TestRestService.class, path);
     }
     
     @Test public void zero() {

@@ -37,7 +37,7 @@ public class ResourceVisitorTest {
         service.method("s", 1, "s", 1,  asList(1, 2 ,3), new Integer[]{ 1, 2, 3},  "s", 1);
         InOrder inOrder = inOrder(visitor);
         inOrder.verify(visitor).path("a");
-        inOrder.verify(visitor).path("b", "s", 1, "c");
+        inOrder.verify(visitor).path("b");
         inOrder.verify(visitor).produces("application/json");
         inOrder.verify(visitor).consumes("application/json");
         inOrder.verify(visitor).param("qS", "s", TypeToken.of(String.class));

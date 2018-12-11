@@ -36,6 +36,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ExecutableType;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.FormParam;
@@ -109,16 +110,13 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .superclass(RestServiceModel.class)
                 .addSuperinterface(TypeName.get(restService.asType()));
-        
-        // Add an import for TypeToken
-        modelTypeBuilder.addStaticBlock(CodeBlock.builder().addStatement("$T dummy = null", TypeToken.class).build());
-        
+
         modelTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addAnnotation(Inject.class)
                 .addModifiers(PUBLIC)
                 .addParameter(TypeName.get(ResourceVisitor.Supplier.class), "parent", FINAL)
                 .addStatement("super(new $T() { public $T get() { return $L.get().path($S); } })",
-                        ResourceVisitor.Supplier.class, ResourceVisitor.class, "parent", rsPath)
+                        ResourceVisitor.Supplier.class, ResourceVisitor.class, "parent", rsPath.length > 0? rsPath[0]: "")
                 .build());
 
         List<ExecutableElement> methods = restService.getEnclosedElements().stream()
@@ -193,19 +191,23 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         boolean skipJavaLangImports = processingEnv.getOptions().containsKey("skipJavaLangImports");
         file.skipJavaLangImports(skipJavaLangImports).build().writeTo(filer);
     }
+    
 
 	private CodeBlock asTypeTokenLiteral(AnnotatedElement annotatedElement) {
 		CodeBlock.Builder builder = CodeBlock.builder();
 		
 		JLMAnnotatedElement jlmAnnotatedElement = (JLMAnnotatedElement)annotatedElement;
 		
-		addTypeTokenLiteral(builder, TypeName.get(jlmAnnotatedElement.getJlmElement().asType()));
+		if (jlmAnnotatedElement.getJlmElement().asType() instanceof ExecutableType)
+			addTypeTokenLiteral(builder, TypeName.get(((ExecutableType)jlmAnnotatedElement.getJlmElement().asType()).getReturnType()));
+		else
+			addTypeTokenLiteral(builder, TypeName.get(jlmAnnotatedElement.getJlmElement().asType()));
 		
 		return builder.build();
 	}
 
     private void addTypeTokenLiteral(CodeBlock.Builder builder, TypeName name) {
-    	builder.add("new TypeToken<$L>(", name);
+    	builder.add("new $T<$L>(", TypeToken.class, name.isPrimitive()? name.box(): name);
 
     	TypeName rawType;
     	List<TypeName> typeArguments;
@@ -219,13 +221,16 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     		
     		rawType = null;
     		typeArguments = Collections.singletonList(arrayTypeName.componentType);
-    	} else if (name instanceof ClassName) {
-    		rawType = name;
+    	} else if (name instanceof ClassName || name instanceof TypeName) {
+    		rawType = name.isPrimitive()? name.box(): name;
     		typeArguments = Collections.emptyList();
     	} else
     		throw new IllegalArgumentException("Unsupported type " + name); 
     	
-    	builder.add("$T.class", rawType);
+    	if(rawType == null)
+    		builder.add("null");
+    	else
+    		builder.add("$T.class", rawType);
     	
     	for (TypeName typeArgumentName: typeArguments) {
     		builder.add(", ");
@@ -251,14 +256,15 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     			if (item instanceof ParamInfo) {
     				ParamInfo paramInfo = (ParamInfo)item;
     				builder.add(
-    					"$L($L, $L)",
+    					".$L($L, $L)",
     					name,
     					paramInfo.getJavaArgumentName(),
     					asTypeTokenLiteral(paramInfo.getAnnotatedElement()));
     			} else {
-    				builder.add("$L($S)", name, item.toString());
+    				builder.add(".$L($S)", name, item.toString());
     			}
     		});
+        
     }
     
     private static void addStringLiterals(CodeBlock.Builder builder, String name, Stream<String> strings) {
