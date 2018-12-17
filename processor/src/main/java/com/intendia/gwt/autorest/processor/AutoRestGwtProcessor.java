@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toSet;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
+import static javax.lang.model.element.Modifier.NATIVE;
 import static javax.ws.rs.HttpMethod.DELETE;
 import static javax.ws.rs.HttpMethod.GET;
 import static javax.ws.rs.HttpMethod.HEAD;
@@ -16,6 +17,7 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -27,6 +29,7 @@ import java.util.stream.Stream;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.inject.Inject;
 import javax.lang.model.SourceVersion;
@@ -37,12 +40,20 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ExecutableType;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.ws.rs.CookieParam;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.MatrixParam;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 
@@ -67,13 +78,22 @@ import com.squareup.javapoet.TypeSpec;
 public class AutoRestGwtProcessor extends AbstractProcessor {
     private static final Set<String> HTTP_METHODS = Stream.of(GET, POST, PUT, DELETE, HEAD, OPTIONS).collect(toSet());
     private static final String AutoRestGwt = AutoRestGwt.class.getCanonicalName();
-
+    private Types typeUtils;
+    private Elements elementUtils;
+    
     @Override public Set<String> getSupportedOptions() { return singleton("debug"); }
 
     @Override public Set<String> getSupportedAnnotationTypes() { return singleton(AutoRestGwt); }
 
     @Override public SourceVersion getSupportedSourceVersion() { return SourceVersion.latestSupported(); }
 
+    @Override public synchronized void init(ProcessingEnvironment processingEnv) {
+        super.init(processingEnv);
+        typeUtils = processingEnv.getTypeUtils();
+        elementUtils = processingEnv.getElementUtils();
+        
+    }
+    
     @Override public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) return false;
         roundEnv.getElementsAnnotatedWith(AutoRestGwt.class).stream()
@@ -91,7 +111,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     }
 
     private void processRestService(TypeElement restService) throws Exception {
-    	AnnotatedElement restServiceAnnotatedElement = new JLMAnnotatedElement(restService.getSimpleName().toString(), restService);
+    	AnnotatedElement restServiceAnnotatedElement = new JLMAnnotatedElement(restService.getSimpleName().toString(), restService, restService.asType());
 		
 		AnnotationProcessor restServiceProcessor = new AnnotationProcessor(restServiceAnnotatedElement);
     	
@@ -119,21 +139,17 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                         ResourceVisitor.Supplier.class, ResourceVisitor.class, "parent", rsPath.length > 0? rsPath[0]: "")
                 .build());
 
-        List<ExecutableElement> methods = restService.getEnclosedElements().stream()
-                .filter(e -> e.getKind() == ElementKind.METHOD && e instanceof ExecutableElement)
-                .map(e -> (ExecutableElement) e)
-                .filter(method -> !(method.getModifiers().contains(STATIC) || method.isDefault()))
-                .collect(Collectors.toList());
-
+        Map<ExecutableElement, ExecutableType> methods = getAllMethods(restService);
+        
         Set<String> methodImports = new HashSet<>();
-        for (ExecutableElement method : methods) {
-        	AnnotatedElement annotatedElement = new JLMAnnotatedElement(method.getSimpleName().toString(), method);
-    		
+        for (Map.Entry<ExecutableElement, ExecutableType> method: methods.entrySet()) {
+        	
+        	AnnotatedElement annotatedElement = new JLMAnnotatedElement(method.getKey().getSimpleName().toString(), method.getKey(), method.getValue());
     		AnnotationProcessor processor = new AnnotationProcessor(annotatedElement);
     		
-            Optional<? extends AnnotationMirror> incompatible = isIncompatible(method);
+            Optional<? extends AnnotationMirror> incompatible = isIncompatible(method.getKey());
             if (incompatible.isPresent()) {
-                modelTypeBuilder.addMethod(MethodSpec.overriding(method)
+                modelTypeBuilder.addMethod(MethodSpec.overriding(method.getKey())
                         .addAnnotation(AnnotationSpec.get(incompatible.get()))
                         .addStatement("throw new $T(\"$L\")", UnsupportedOperationException.class, annotatedElement.getSimpleName())
                         .build());
@@ -142,14 +158,15 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 
             CodeBlock.Builder builder = CodeBlock.builder().add("$[return ");
             {
-            	List<? extends VariableElement> parameters = method.getParameters();
-            	
+            	List<? extends VariableElement> parameters = method.getKey().getParameters();
+            	List<? extends TypeMirror> parameterTypes = method.getValue().getParameterTypes();
+
         		Supplier<Stream<? extends Entry<Integer, AnnotatedElement>>> parametersFactory = () -> 
 	    			IntStream
 	    				.range(0, parameters.size())
 	    				.mapToObj(index -> new SimpleEntry<>(
 	    					index, 
-	    					new JLMAnnotatedElement(parameters.get(index).getSimpleName().toString(), parameters.get(index))));
+	    					new JLMAnnotatedElement(parameters.get(index).getSimpleName().toString(), parameters.get(index), parameterTypes.get(index))));
     		
                 // method type
                 builder.add("method($L)", methodImport(methodImports, processor.getHttpMethod()));
@@ -182,7 +199,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
             
             builder.add(".as($L);\n$]", asTypeTokenLiteral(annotatedElement));
 
-            modelTypeBuilder.addMethod(MethodSpec.overriding(method).addCode(builder.build()).build());
+            modelTypeBuilder.addMethod(MethodSpec.overriding(method.getKey(), (DeclaredType)restService.asType(), typeUtils).addCode(builder.build()).build());
         }
 
         Filer filer = processingEnv.getFiler();
@@ -192,16 +209,34 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         file.skipJavaLangImports(skipJavaLangImports).build().writeTo(filer);
     }
     
-
+    private  Map<ExecutableElement, ExecutableType> getAllMethods(TypeElement restService) {
+    	return 
+    		elementUtils.getAllMembers(restService).stream()
+                .filter(e -> e.getKind() == ElementKind.METHOD && e instanceof ExecutableElement)
+                .map(e -> (ExecutableElement) e)
+                .filter(method -> !(
+                	method.getModifiers().contains(STATIC)
+                	|| method.getModifiers().contains(FINAL)
+                	|| method.getModifiers().contains(NATIVE)
+                	|| method.isDefault()))
+                .filter(method -> (
+                	isIncompatible(method).isPresent()	
+                	|| method.getAnnotation(GET.class) != null
+                	|| method.getAnnotation(PUT.class) != null
+                	|| method.getAnnotation(POST.class) != null
+                	|| method.getAnnotation(DELETE.class) != null))
+                .collect(Collectors.toMap(m -> m, m -> ((ExecutableType)typeUtils.asMemberOf((DeclaredType)restService.asType() , m))));
+    }
+    
 	private CodeBlock asTypeTokenLiteral(AnnotatedElement annotatedElement) {
 		CodeBlock.Builder builder = CodeBlock.builder();
 		
 		JLMAnnotatedElement jlmAnnotatedElement = (JLMAnnotatedElement)annotatedElement;
 		
-		if (jlmAnnotatedElement.getJlmElement().asType() instanceof ExecutableType)
-			addTypeTokenLiteral(builder, TypeName.get(((ExecutableType)jlmAnnotatedElement.getJlmElement().asType()).getReturnType()));
+		if (jlmAnnotatedElement.getJlmType() instanceof ExecutableType)
+			addTypeTokenLiteral(builder, TypeName.get(((ExecutableType)jlmAnnotatedElement.getJlmType()).getReturnType()));
 		else
-			addTypeTokenLiteral(builder, TypeName.get(jlmAnnotatedElement.getJlmElement().asType()));
+			addTypeTokenLiteral(builder, TypeName.get(jlmAnnotatedElement.getJlmType()));
 		
 		return builder.build();
 	}

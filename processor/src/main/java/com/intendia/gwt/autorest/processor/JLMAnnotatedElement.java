@@ -6,6 +6,7 @@ import java.lang.annotation.Annotation;
 import java.util.Objects;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
 
 import com.intendia.gwt.autorest.client.AnnotationProcessor.AnnotatedElement;
 
@@ -15,14 +16,20 @@ import com.intendia.gwt.autorest.client.AnnotationProcessor.AnnotatedElement;
 public class JLMAnnotatedElement implements AnnotatedElement {
 	private String simpleName;
 	private Element jlmElement;
+	private TypeMirror jlmType;
 
-	public JLMAnnotatedElement(String simpleName, Element jlmElement) {
+	public JLMAnnotatedElement(String simpleName, Element jlmElement, TypeMirror jlmType) {
 		this.simpleName = simpleName;
 		this.jlmElement = jlmElement;
+		this.jlmType = jlmType;
 	}
 	
 	public Element getJlmElement() {
 		return jlmElement;
+	}
+	
+	public TypeMirror getJlmType() {
+		return jlmType;
 	}
 	
 	@Override
