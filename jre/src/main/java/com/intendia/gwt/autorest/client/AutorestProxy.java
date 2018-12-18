@@ -42,7 +42,7 @@ public class AutorestProxy {
             .filter(method -> !((method.getModifiers()&java.lang.reflect.Modifier.STATIC) != 0 || method.isDefault()));
 
         Map<Method, BiFunction<Object, Object[], Object>> restServiceMethodProxies = methods
-        	.map(method -> new SimpleEntry<>(method, createMethodProxy(method, path)))
+        	.map(method -> new SimpleEntry<>(method, createMethodProxy(restService, method, path)))
         	.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
         
         return restService.cast(Proxy.newProxyInstance(
@@ -51,9 +51,7 @@ public class AutorestProxy {
         	(proxy, method, args) -> restServiceMethodProxies.get(method).apply(proxy, args)));
 	}
 	
-	private static BiFunction<Object, Object[], Object> createMethodProxy(Method method, ResourceVisitor.Supplier path) {
-		Class<?> restService = method.getDeclaringClass();
-
+	private static BiFunction<Object, Object[], Object> createMethodProxy(Class<?> restService, Method method, ResourceVisitor.Supplier path) {
 		String name = method.getName();
 		Parameter[] parameters = method.getParameters();
 

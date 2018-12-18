@@ -43,6 +43,13 @@ public class JreResourceBuilderTest {
                 responseBody.write("[{\"bar\":\"expected1\"},{\"bar\":\"expected2\"}]".getBytes());
             }
         });
+        httpServer.createContext("/api/base", httpExchange -> {
+            httpExchange.sendResponseHeaders(200, 0);
+            try (OutputStream responseBody = httpExchange.getResponseBody()) {
+            	 responseBody.write("{\"bar\":\"expected base\"}".getBytes());
+            }
+        });
+        
         httpServer.start();
     }
     @AfterClass public static void closeServer() {
@@ -65,6 +72,10 @@ public class JreResourceBuilderTest {
         assertNull(rest.zero().blockingGet());
     }
 
+    @Test public void baseOne() {
+    	assertEquals("expected base", rest.baseOne().blockingGet().bar);
+    }
+
     @Test public void one() {
         assertEquals("expected", rest.one().blockingGet().bar);
     }
@@ -73,8 +84,12 @@ public class JreResourceBuilderTest {
         assertEquals(2, rest.many().toList().blockingGet().size());
     }
 
+    public interface baseInterface {
+    	@GET @Path("base") Single<Foo> baseOne();
+    }
+    
     @AutoRestGwt @Path("api")
-    public interface TestRestService {
+    public interface TestRestService extends baseInterface {
         @GET @Path("zero") Completable zero();
         @GET @Path("one") Single<Foo> one();
         @GET @Path("many") Observable<Foo> many();
