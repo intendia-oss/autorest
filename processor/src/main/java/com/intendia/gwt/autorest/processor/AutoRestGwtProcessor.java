@@ -59,12 +59,10 @@ import javax.ws.rs.QueryParam;
 
 import com.google.common.base.Throwables;
 import com.intendia.gwt.autorest.client.AutoRestGwt;
-import com.intendia.gwt.autorest.client.AnnotationProcessor;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
 import com.intendia.gwt.autorest.client.RestServiceModel;
 import com.intendia.gwt.autorest.client.TypeToken;
-import com.intendia.gwt.autorest.client.AnnotationProcessor.AnnotatedElement;
-import com.intendia.gwt.autorest.client.AnnotationProcessor.ParamInfo;
+import com.intendia.gwt.autorest.processor.AnnotationProcessor.ParamInfo;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
@@ -111,7 +109,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
     }
 
     private void processRestService(TypeElement restService) throws Exception {
-    	AnnotatedElement restServiceAnnotatedElement = new JLMAnnotatedElement(restService.getSimpleName().toString(), restService, restService.asType());
+    	AnnotatedElement restServiceAnnotatedElement = new AnnotatedElement(restService.getSimpleName().toString(), restService, restService.asType());
 		
 		AnnotationProcessor restServiceProcessor = new AnnotationProcessor(restServiceAnnotatedElement);
     	
@@ -144,7 +142,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         Set<String> methodImports = new HashSet<>();
         for (Map.Entry<ExecutableElement, ExecutableType> method: methods.entrySet()) {
         	
-        	AnnotatedElement annotatedElement = new JLMAnnotatedElement(method.getKey().getSimpleName().toString(), method.getKey(), method.getValue());
+        	AnnotatedElement annotatedElement = new AnnotatedElement(method.getKey().getSimpleName().toString(), method.getKey(), method.getValue());
     		AnnotationProcessor processor = new AnnotationProcessor(annotatedElement);
     		
             Optional<? extends AnnotationMirror> incompatible = isIncompatible(method.getKey());
@@ -166,7 +164,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 	    				.range(0, parameters.size())
 	    				.mapToObj(index -> new SimpleEntry<>(
 	    					index, 
-	    					new JLMAnnotatedElement(parameters.get(index).getSimpleName().toString(), parameters.get(index), parameterTypes.get(index))));
+	    					new AnnotatedElement(parameters.get(index).getSimpleName().toString(), parameters.get(index), parameterTypes.get(index))));
     		
                 // method type
                 builder.add("method($L)", methodImport(methodImports, processor.getHttpMethod()));
@@ -231,7 +229,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
 	private CodeBlock asTypeTokenLiteral(AnnotatedElement annotatedElement) {
 		CodeBlock.Builder builder = CodeBlock.builder();
 		
-		JLMAnnotatedElement jlmAnnotatedElement = (JLMAnnotatedElement)annotatedElement;
+		AnnotatedElement jlmAnnotatedElement = (AnnotatedElement)annotatedElement;
 		
 		if (jlmAnnotatedElement.getJlmType() instanceof ExecutableType)
 			addTypeTokenLiteral(builder, TypeName.get(((ExecutableType)jlmAnnotatedElement.getJlmType()).getReturnType()));

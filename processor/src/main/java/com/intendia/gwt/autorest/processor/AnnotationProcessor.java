@@ -1,4 +1,4 @@
-package com.intendia.gwt.autorest.client;
+package com.intendia.gwt.autorest.processor;
 
 import static java.util.Optional.ofNullable;
 import static javax.ws.rs.HttpMethod.GET;
@@ -28,20 +28,6 @@ import javax.ws.rs.QueryParam;
  * HTTP method type, as well as data, query, header and form parameters' information. 
  */
 public class AnnotationProcessor {
-	/**
-	 * A minimal abstraction of an annotated element (a class, method or method parameter).
-	 * 
-	 * {@link AnnotationProcessor} works with this abstraction only, which allows it to target the 
-	 * java.lang.reflection-based representations of a class, method and method parameters as well as their 
-	 * javax.lang.model-based analogs.
-	 */
-	public interface AnnotatedElement {
-		String getSimpleName();
-		
-    	<T extends Annotation> T getAnnotationOverAnnotations(Class<T> annotationClass);
-    	<T extends Annotation> T getAnnotation(Class<T> annotationClass);
-    }
-
 	public static class ParamInfo {
 		private String name;
 		private AnnotatedElement annotatedElement;

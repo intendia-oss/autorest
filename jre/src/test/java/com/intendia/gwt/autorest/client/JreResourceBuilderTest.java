@@ -3,24 +3,21 @@ package com.intendia.gwt.autorest.client;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import com.sun.net.httpserver.HttpServer;
+import io.reactivex.Completable;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.sun.net.httpserver.HttpServer;
-
-import io.reactivex.Completable;
-import io.reactivex.Observable;
-import io.reactivex.Single;
-
 public class JreResourceBuilderTest {
+
     private static HttpServer httpServer;
 
     @BeforeClass public static void prepareServer() throws Exception {
@@ -50,17 +47,13 @@ public class JreResourceBuilderTest {
     }
 
     private static String baseUrl;
-    private static TestRestService rest;
+    private static TestRestService_RestServiceModel rest;
 
     @Before public void prepareClient() {
         baseUrl = "http://localhost:" + httpServer.getAddress().getPort() + "/";
-        rest = createRestService(() -> new JreResourceBuilder(baseUrl));
+        rest = new TestRestService_RestServiceModel(() -> new JreResourceBuilder(baseUrl));
     }
 
-    protected TestRestService createRestService(ResourceVisitor.Supplier path) {
-    	return AutorestProxy.create(TestRestService.class, path);
-    }
-    
     @Test public void zero() {
         assertNull(rest.zero().blockingGet());
     }

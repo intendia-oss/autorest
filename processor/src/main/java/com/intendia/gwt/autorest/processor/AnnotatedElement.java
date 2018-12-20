@@ -8,17 +8,19 @@ import java.util.Objects;
 import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
-import com.intendia.gwt.autorest.client.AnnotationProcessor.AnnotatedElement;
 
 /**
- * An {@link AnnotatedElement} implementation which delegates to {@link Element}.
+ * A minimal abstraction of an annotated element (a class, method or method parameter).
+ * 
+ * {@link AnnotationProcessor} works with this abstraction only, which allows it to target the 
+ * javax.lang.model-based elements
  */
-public class JLMAnnotatedElement implements AnnotatedElement {
+public class AnnotatedElement {
 	private String simpleName;
 	private Element jlmElement;
 	private TypeMirror jlmType;
 
-	public JLMAnnotatedElement(String simpleName, Element jlmElement, TypeMirror jlmType) {
+	public AnnotatedElement(String simpleName, Element jlmElement, TypeMirror jlmType) {
 		this.simpleName = simpleName;
 		this.jlmElement = jlmElement;
 		this.jlmType = jlmType;
@@ -32,17 +34,14 @@ public class JLMAnnotatedElement implements AnnotatedElement {
 		return jlmType;
 	}
 	
-	@Override
 	public String getSimpleName() {
 		return simpleName;
 	}
 
-	@Override
 	public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
 		return jlmElement.getAnnotation(annotationClass);
 	}
 	
-	@Override
 	public <T extends Annotation> T getAnnotationOverAnnotations(Class<T> annotationClass) {
 		return jlmElement.getAnnotationMirrors().stream()
 			.map(a -> asElement(a.getAnnotationType()).getAnnotation(annotationClass))
