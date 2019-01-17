@@ -7,7 +7,7 @@
         <version>HEAD-SNAPSHOT</version>
     </parent>
     <artifactId>autorest-core</artifactId>
-    <packaging>jar</packaging>
+    <packaging>gwt-lib</packaging>
     <name>AutoREST :: core</name>
 
     <properties>
@@ -40,6 +40,18 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <build>
+    	<plugins>
+     		<plugin>
+                <groupId>net.ltgt.gwt.maven</groupId>
+                <artifactId>gwt-maven-plugin</artifactId>
+                <configuration>
+                    <moduleName>com.intendia.gwt.autorest</moduleName>
+                    <moduleShortName>autorest</moduleShortName>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
 
 
