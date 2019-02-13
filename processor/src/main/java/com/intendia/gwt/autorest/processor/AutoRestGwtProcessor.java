@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import javax.annotation.Generated;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -124,11 +125,15 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
         log("rest service model: " + modelName);
 
         TypeSpec.Builder modelTypeBuilder = TypeSpec.classBuilder(modelName.simpleName())
+        		.addJavadoc(CodeBlock.of("This is generated class, please don't modify\n"))
+        		.addAnnotation(AnnotationSpec.builder(Generated.class)
+                        .addMember("value", "\"" + getClass().getCanonicalName() + "\"")
+                        .build())
                 .addOriginatingElement(restService)
                 .addModifiers(Modifier.PUBLIC)
                 .superclass(RestServiceModel.class)
                 .addSuperinterface(TypeName.get(restService.asType()));
-
+                
         modelTypeBuilder.addMethod(MethodSpec.constructorBuilder()
                 .addAnnotation(Inject.class)
                 .addModifiers(PUBLIC)
