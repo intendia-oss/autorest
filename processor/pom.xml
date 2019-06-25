@@ -86,9 +86,9 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.immutables.tools</groupId>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>4</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -98,21 +98,19 @@
                         <configuration>
                             <minimizeJar>true</minimizeJar>
                             <artifactSet>
-                                <excludes>
-                                    <exclude>com.intendia.gwt.autorest:autorest-core</exclude>
-                                    <exclude>javax.ws.rs:jsr311-api</exclude>
-                                    <exclude>javax.inject:javax.inject</exclude>
-                                    <exclude>com.google.code.findbugs:jsr305</exclude>
-                                </excludes>
+                                <includes>
+                                    <include>com.google.auto:auto-common</include>
+                                    <include>com.squareup:javapoet</include>
+                                </includes>
                             </artifactSet>
                             <relocations>
                                 <relocation>
-                                    <pattern>com.google</pattern>
-                                    <shadedPattern>autorest.shaded.com.google$</shadedPattern>
+                                    <pattern>com.google.auto</pattern>
+                                    <shadedPattern>autorest.shaded.com.google.auto\$</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.squareup.javapoet</pattern>
-                                    <shadedPattern>autorest.shaded.com.squareup.javapoet$</shadedPattern>
+                                    <shadedPattern>autorest.shaded.com.squareup.javapoet\$</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
