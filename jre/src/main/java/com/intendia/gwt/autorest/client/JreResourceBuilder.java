@@ -1,10 +1,5 @@
 package com.intendia.gwt.autorest.client;
 
-import com.google.gson.Gson;
-import com.google.gson.stream.JsonReader;
-import io.reactivex.Completable;
-import io.reactivex.Observable;
-import io.reactivex.Single;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -16,6 +11,13 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.stream.Stream;
+
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
+
+import io.reactivex.Completable;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 
 public class JreResourceBuilder extends CollectorResourceVisitor {
     private final ConnectionFactory factory;
@@ -40,8 +42,8 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         } catch (Exception e) { throw new RuntimeException(e); }
     }
 
-    @Override public <T> T as(Class<? super T> container, Class<?> type) {
-        return json.fromJson(request(), container, type);
+    @Override public <T> T as(TypeToken<T> typeToken) {
+        return json.fromJson(request(), typeToken);
     }
 
     private Single<Reader> request() {
@@ -51,7 +53,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
                 req = factory.apply(uri());
                 req.setRequestMethod(method);
                 if (produces.length > 0) req.setRequestProperty("Accept", produces[0]);
-                for (Param e : headerParams) req.setRequestProperty(e.k, Objects.toString(e.v));
+                for (Param<?> e : headerParams) req.setRequestProperty(e.k, Objects.toString(e.v));
             } catch (Exception e) {
                 throw err("open connection error", e);
             }
@@ -100,7 +102,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
 
     public interface JsonCodec {
         void toJson(Object src, Appendable writer);
-        <C> C fromJson(Single<Reader> json, Class<? super C> container, Class<?> type);
+        <C> C fromJson(Single<Reader> json, TypeToken<C> typeToken);
     }
 
     public static class GsonCodec implements JsonCodec {
@@ -111,16 +113,23 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         }
 
         @SuppressWarnings("unchecked")
-        @Override public <T> T fromJson(Single<Reader> req, Class<? super T> container, Class<?> type) {
-            if (Completable.class.equals(container)) return (T) req.doOnSuccess(this::consume).toCompletable();
-            if (Single.class.equals(container)) return (T) req.map(reader -> {
-                if (Reader.class.equals(type)) return reader;
-                if (String.class.equals(type)) return readAsString(reader);
-                return gson.fromJson(reader, type);
+        @Override public <T> T fromJson(Single<Reader> req, TypeToken<T> typeToken) {
+            if (Completable.class.equals(typeToken.getRawType())) return (T) req.doOnSuccess(this::consume).toCompletable();
+            if (Single.class.equals(typeToken.getRawType())) return (T) req.map(reader -> {
+            	TypeToken<?> itemTypeToken = typeToken.getTypeArguments()[0];
+            	
+                if (Reader.class.equals(itemTypeToken.getRawType())) return reader;
+                if (String.class.equals(itemTypeToken.getRawType())) return readAsString(reader);
+                return gson.fromJson(reader, itemTypeToken.getType());
             });
-            if (Observable.class.equals(container)) return (T) req.toObservable()
-                    .flatMapIterable(n -> () -> new ParseArrayIterator<>(n, type));
-            throw new IllegalArgumentException("unsupported type " + container);
+            if (Observable.class.equals(typeToken.getRawType())) {
+            	TypeToken<?> itemTypeToken = typeToken.getTypeArguments()[0];
+            	
+            	return (T) req.toObservable()
+                    .flatMapIterable(n -> () -> new ParseArrayIterator<>(n, itemTypeToken));
+            }
+        	
+            throw new IllegalArgumentException("unsupported type " + typeToken);
         }
 
         private static String readAsString(Reader in) {
@@ -135,10 +144,10 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
         }
 
         private class ParseArrayIterator<T> implements Iterator<T> {
-            private final Class<T> type;
+            private final TypeToken<T> typeToken;
             private JsonReader reader;
-            public ParseArrayIterator(Reader reader, Class<T> type) {
-                this.type = type;
+            public ParseArrayIterator(Reader reader, TypeToken<T> typeToken) {
+                this.typeToken = typeToken;
                 this.reader = new JsonReader(reader);
                 try { this.reader.beginArray(); } catch (Exception e) { throw err("parsing error", e); }
             }
@@ -150,7 +159,7 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
             @Override public T next() {
                 if (!hasNext()) throw new NoSuchElementException();
                 try {
-                    T next = gson.fromJson(reader, type);
+                    T next = gson.fromJson(reader, typeToken.getType());
                     if (!reader.hasNext()) { reader.endArray(); reader.close(); reader = null; }
                     return next;
                 } catch (Exception e) { throw err("parsing error", e); }

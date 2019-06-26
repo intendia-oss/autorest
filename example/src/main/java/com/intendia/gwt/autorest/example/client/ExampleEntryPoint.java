@@ -14,10 +14,12 @@ import com.google.gwt.user.client.ui.TextBox;
 import com.google.web.bindery.event.shared.HandlerRegistration;
 import com.intendia.gwt.autorest.client.RequestResourceBuilder;
 import com.intendia.gwt.autorest.client.ResourceVisitor;
+import com.intendia.gwt.autorest.client.TypeToken;
 import com.intendia.gwt.autorest.example.client.ExampleService.Greeting;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.functions.Consumer;
+
 
 public class ExampleEntryPoint implements EntryPoint {
     private Consumer<Throwable> err = e -> GWT.log("exception: " + e, e);
@@ -27,7 +29,7 @@ public class ExampleEntryPoint implements EntryPoint {
         HTML out = append(new HTML());
 
         ResourceVisitor.Supplier getApi = () -> new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api");
-        ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok"));
+        ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok", new TypeToken<String>(String.class){}));
 
         Observable.merge(valueChange(name), keyUp(name)).map(e -> name.getValue())
                 .switchMap(q -> {

@@ -11,26 +11,29 @@ public interface ResourceVisitor {
     /** Append paths, or set if the path is absolute. */
     ResourceVisitor path(Object... paths);
 
+    /** Sets a path param with its type */
+    <T> ResourceVisitor path(@Nullable T value, TypeToken<T> typeToken);
+    
     /** Sets the produced media-type. */
     ResourceVisitor produces(String... produces);
 
     /** Sets the consumed media-type. */
     ResourceVisitor consumes(String... consumes);
 
-    /** Sets a query param. */
-    ResourceVisitor param(String key, @Nullable Object value);
+    /** Sets a query param with its type */
+    <T> ResourceVisitor param(String key, @Nullable T value, TypeToken<T> typeToken);
 
-    /** Sets a header param. */
-    ResourceVisitor header(String key, @Nullable Object value);
+    /** Sets a header param with its type. */
+    <T> ResourceVisitor header(String key, @Nullable T value, TypeToken<T> typeToken);
 
-    /** Sets a from param. */
-    ResourceVisitor form(String key, @Nullable Object value);
+    /** Sets a form param with its type. */
+    <T> ResourceVisitor form(String key, @Nullable T value, TypeToken<T> typeToken);
+    
+    /** Sets the content data with its type. */
+    <T> ResourceVisitor data(T data, TypeToken<T> typeToken);
 
-    /** Sets the content data. */
-    ResourceVisitor data(Object data);
-
-    /** Wrap the current resource state into a {@code container}. */
-    <T> T as(Class<? super T> container, Class<?> type);
+    /** Wrap the current resource state into a {@code type}. */
+    <T> T as(TypeToken<T> typeToken);
 
     interface Supplier {
         ResourceVisitor get();

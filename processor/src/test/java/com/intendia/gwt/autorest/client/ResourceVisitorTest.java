@@ -11,6 +11,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -21,26 +23,57 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import org.junit.Test;
+import org.mockito.ArgumentMatcher;
 import org.mockito.InOrder;
+import org.mockito.Matchers;
+import org.mockito.internal.matchers.Any;
 
 public class ResourceVisitorTest {
 
+	@Test public void interface_inheritance() throws Exception {
+		 ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
+	        when(visitor.as(TypeToken.of(Integer.class))).thenReturn(0);
+	        TestService service = new TestService_RestServiceModel(() -> visitor);
+	        service.baseMethod();
+	        InOrder inOrder = inOrder(visitor);
+	        inOrder.verify(visitor).path("base");
+	        inOrder.verify(visitor).produces("application/json");
+	        inOrder.verify(visitor).consumes("application/json");
+	        inOrder.verify(visitor).as(TypeToken.of(Integer.class));
+	        inOrder.verifyNoMoreInteractions();
+	}
+	
+	@Test public void interface_inheritance_more() throws Exception {
+		 ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
+	        when(visitor.as(TypeToken.of(Integer.class))).thenReturn(0);
+	        TestService service = new TestService_RestServiceModel(() -> visitor);
+	        service.childMethod("Test string");
+	        InOrder inOrder = inOrder(visitor);
+	        inOrder.verify(visitor).path("child");
+	        inOrder.verify(visitor).produces("application/json");
+	        inOrder.verify(visitor).consumes("application/json");
+	        inOrder.verify(visitor).param("str_param", "Test string", TypeToken.of(String.class));
+	        inOrder.verify(visitor).as(TypeToken.of(Integer.class));
+	        inOrder.verifyNoMoreInteractions();
+	}
+	
     @Test public void visitor_works() throws Exception {
         ResourceVisitor visitor = mock(ResourceVisitor.class, RETURNS_SELF);
-        when(visitor.as(List.class, String.class)).thenReturn(singletonList("done"));
+        when(visitor.as(new TypeToken<List<String>>(List.class, TypeToken.of(String.class)) {})).thenReturn(singletonList("done"));
         TestService service = new TestService_RestServiceModel(() -> visitor);
-        service.method("s", 1, "s", 1, asList(1, 2, 3), "s", 1);
+        service.method("s", 1, "s", 1,  asList(1, 2 ,3), new Integer[]{ 1, 2, 3},  "s", 1);
         InOrder inOrder = inOrder(visitor);
         inOrder.verify(visitor).path("a");
-        inOrder.verify(visitor).path("b", "s", 1, "c");
+        inOrder.verify(visitor).path("b");
         inOrder.verify(visitor).produces("application/json");
         inOrder.verify(visitor).consumes("application/json");
-        inOrder.verify(visitor).param("qS", "s");
-        inOrder.verify(visitor).param("qI", 1);
-        inOrder.verify(visitor).param("qIs", asList(1, 2, 3));
-        inOrder.verify(visitor).header("hS", "s");
-        inOrder.verify(visitor).header("hI", 1);
-        inOrder.verify(visitor).as(List.class, String.class);
+        inOrder.verify(visitor).param("qS", "s", TypeToken.of(String.class));
+        inOrder.verify(visitor).param("qI", 1, TypeToken.of(Integer.class));
+        inOrder.verify(visitor).param("qIs", asList(1, 2, 3), new TypeToken<List<Integer>>(List.class, TypeToken.of(Integer.class)) {});
+        inOrder.verify(visitor).param("qIa", new Integer[] {1, 2, 3}, TypeToken.of(Integer[].class));
+        inOrder.verify(visitor).header("hS", "s", TypeToken.of(String.class));
+        inOrder.verify(visitor).header("hI", 1, TypeToken.of(Integer.class));
+        inOrder.verify(visitor).as(new TypeToken<List<String>>(List.class, TypeToken.of(String.class)) {});
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -49,12 +82,23 @@ public class ResourceVisitorTest {
         service.gwtIncompatible();
     }
 
+    
+    public interface BaseInterface<T> {
+    	@Produces("application/json") @Consumes("application/json")
+    	@GET @Path("base") T baseMethod();
+    }
+    
+    public interface ChildInterface<T, P> extends BaseInterface<T>{
+    	@Produces("application/json") @Consumes("application/json")
+    	@GET @Path("child") T childMethod(@QueryParam("str_param") P param);
+    }
+    
     @AutoRestGwt @Path("a") @Produces("*/*") @Consumes("*/*")
-    public interface TestService {
+    public interface TestService extends ChildInterface<Integer, String>{
         @Produces("application/json") @Consumes("application/json")
         @GET @Path("b/{pS}/{pI}/c") List<String> method(
                 @PathParam("pS") String pS, @PathParam("pI") int pI,
-                @QueryParam("qS") String qS, @QueryParam("qI") int qI, @QueryParam("qIs") List<Integer> qIs,
+                @QueryParam("qS") String qS, @QueryParam("qI") int qI, @QueryParam("qIs") List<Integer> qIs, @QueryParam("qIa") Integer[] qIa,
                 @HeaderParam("hS") String hS, @HeaderParam("hI") int hI);
 
         @GwtIncompatible Response gwtIncompatible();
