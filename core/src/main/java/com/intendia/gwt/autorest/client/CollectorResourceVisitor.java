@@ -3,7 +3,6 @@ package com.intendia.gwt.autorest.client;
 import static com.intendia.gwt.autorest.client.CollectorResourceVisitor.Param.expand;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +12,6 @@ import javax.ws.rs.HttpMethod;
 
 /* @Experimental */
 public abstract class CollectorResourceVisitor implements ResourceVisitor {
-    private static final String ABSOLUTE_PATH = "[a-z][a-z0-9+.-]*:.*|//.*";
     private static final List<Integer> DEFAULT_EXPECTED_STATUS = asList(200, 201, 204, 1223/*MSIE*/);
 
     public static class Param {
@@ -31,15 +29,20 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
         @Override public String toString() { return "Param{k='" + k + "', v=" + v + '}'; }
     }
 
+    protected final String base;
     protected List<String> paths = new ArrayList<>();
     protected List<Param> queryParams = new ArrayList<>();
     protected List<Param> headerParams = new ArrayList<>();
     protected List<Param> formParams = new ArrayList<>();
     protected String method = HttpMethod.GET;
-    protected String produces[] = { "application/json" };
-    protected String consumes[] = { "application/json" };
+    protected String[] produces = { "application/json" };
+    protected String[] consumes = { "application/json" };
     protected Object data = null;
     private List<Integer> expectedStatuses = DEFAULT_EXPECTED_STATUS;
+
+    protected CollectorResourceVisitor(String base) {
+        this.base = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+    }
 
     @Override public ResourceVisitor method(String method) {
         Objects.requireNonNull(method, "path required");
@@ -53,9 +56,8 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     }
 
     public ResourceVisitor path(String path) {
-        if (path.endsWith("/")) path = path.substring(0, path.length() - 1); // strip off trailing slash
-        if (path.matches(ABSOLUTE_PATH)) this.paths = new ArrayList<>(singleton(path)); // reset current path
-        else this.paths.add(path.startsWith("/") ? path : "/" + path);
+        if (path.isEmpty()) throw new IllegalArgumentException("non-empty path required");
+        this.paths.add(path);
         return this;
     }
 
@@ -95,9 +97,11 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     public String method() { return method; }
 
     public String uri() {
-        String path = "";
-        for (String p : paths) path += p;
-        return path + query();
+        String out = base;
+        for (String pathComponent : paths) {
+            out += "/" + encodeComponent(pathComponent);
+        }
+        return out + query();
     }
 
     public String query() {
@@ -106,11 +110,11 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     }
 
     protected String encodeParams(List<Param> params) {
-        String q = "";
+        String out = "";
         for (Param p : expand(params)) {
-            q += (q.isEmpty() ? "" : "&") + encodeComponent(p.k) + "=" + encodeComponent(Objects.toString(p.v));
+            out += (out.isEmpty() ? "" : "&") + encodeComponent(p.k) + "=" + encodeComponent(Objects.toString(p.v));
         }
-        return q;
+        return out;
     }
 
     protected abstract String encodeComponent(String str);
@@ -135,6 +139,6 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
     }
 
     @Override public String toString() {
-        return method + " " + paths;
+        return method + " " + uri();
     }
 }

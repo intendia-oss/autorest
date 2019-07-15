@@ -21,14 +21,14 @@ public class JreResourceBuilder extends CollectorResourceVisitor {
     private final ConnectionFactory factory;
     private final JsonCodec json;
 
-    public JreResourceBuilder(String root) {
-        this(root, url -> (HttpURLConnection) new URL(url).openConnection(), new GsonCodec());
+    public JreResourceBuilder(String base) {
+        this(base, url -> (HttpURLConnection) new URL(url).openConnection(), new GsonCodec());
     }
 
-    public JreResourceBuilder(String root, ConnectionFactory factory, JsonCodec codec) {
+    public JreResourceBuilder(String base, ConnectionFactory factory, JsonCodec codec) {
+        super(base);
         this.factory = factory;
         this.json = codec;
-        path(root);
     }
 
     @Override protected String encodeComponent(String str) {
