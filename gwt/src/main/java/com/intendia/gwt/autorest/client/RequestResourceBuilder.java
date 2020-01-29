@@ -33,7 +33,7 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     };
     public static final BiFunction<Single<XMLHttpRequest>, RequestResourceBuilder, Single<XMLHttpRequest>> DEFAULT_REQUEST_TRANSFORMER = (xml, data) -> xml;
     public static final Function<XMLHttpRequest, FailedStatusCodeException> DEFAULT_UNEXPECTED_MAPPER = xhr -> {
-        return new FailedStatusCodeException(xhr.status, xhr.statusText);
+        return new FailedStatusCodeException(xhr.status, xhr.responseText, xhr.statusText);
     };
 
     private Function<RequestResourceBuilder, XMLHttpRequest> requestFactory = DEFAULT_REQUEST_FACTORY;
