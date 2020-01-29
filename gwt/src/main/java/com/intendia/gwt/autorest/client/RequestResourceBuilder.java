@@ -40,6 +40,8 @@ public class RequestResourceBuilder extends CollectorResourceVisitor {
     private Function<XMLHttpRequest, FailedStatusCodeException> unexpectedMapper = DEFAULT_UNEXPECTED_MAPPER;
     private BiFunction<Single<XMLHttpRequest>, RequestResourceBuilder, Single<XMLHttpRequest>> requestTransformer = DEFAULT_REQUEST_TRANSFORMER;
 
+    public RequestResourceBuilder(String base) {super(base);}
+
     @Override protected String encodeComponent(String str) { return encodeURIComponent(str).replaceAll("%20", "+"); }
 
     public RequestResourceBuilder requestFactory(Function<RequestResourceBuilder, XMLHttpRequest> fn) {
