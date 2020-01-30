@@ -57,6 +57,9 @@ public abstract class CollectorResourceVisitor implements ResourceVisitor {
 
     public ResourceVisitor path(String path) {
         if (path.isEmpty()) throw new IllegalArgumentException("non-empty path required");
+        //Strip start and end slashes since they'll be redundant (Some path entry-points force them)
+        path = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+        path = path.startsWith("/") ? path.substring(1, path.length()) : path;
         this.paths.add(path);
         return this;
     }

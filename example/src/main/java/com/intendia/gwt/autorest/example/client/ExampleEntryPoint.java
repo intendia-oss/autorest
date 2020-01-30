@@ -26,7 +26,7 @@ public class ExampleEntryPoint implements EntryPoint {
         TextBox name = append(new TextBox());
         HTML out = append(new HTML());
 
-        ResourceVisitor.Supplier getApi = () -> new RequestResourceBuilder().path(GWT.getModuleBaseURL(), "api");
+        ResourceVisitor.Supplier getApi = () -> new RequestResourceBuilder("").path(GWT.getModuleBaseURL(), "api");
         ExampleService srv = new ExampleService_RestServiceModel(() -> getApi.get().header("auth", "ok"));
 
         Observable.merge(valueChange(name), keyUp(name)).map(e -> name.getValue())
