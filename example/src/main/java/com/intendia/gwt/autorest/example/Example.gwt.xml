@@ -1,9 +1,0 @@
-<!DOCTYPE module PUBLIC "-//Google Inc.//DTD Google Web Toolkit 2.8.2//EN" "http://gwtproject.org/doctype/2.8.2/gwt-module.dtd">
-<module rename-to="example">
-    <inherits name="com.google.gwt.user.User"/>
-    <inherits name="com.intendia.gwt.autorest.AutoRest"/>
-    <inherits name="io.reactivex.RxJava"/>
-    <collapse-all-properties/>
-    <servlet path="/api/*" class="com.intendia.gwt.autorest.example.server.GreetingServlet"/>
-    <entry-point class="com.intendia.gwt.autorest.example.client.ExampleEntryPoint"/>
-</module>

@@ -72,7 +72,6 @@
                 <configuration>
                     <moduleName>com.intendia.gwt.autorest.AutoRest</moduleName>
                     <skipModule>true</skipModule>
-                    <relocateSuperSource>true</relocateSuperSource>
                 </configuration>
             </plugin>
         </plugins>

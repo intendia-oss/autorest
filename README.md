@@ -10,7 +10,7 @@ to build requests using any transport library.*
 It helps organize because AutoREST uses a simplified JSR311 RESTful API definition which is easy to write and read. 
 You can use this API in the server side using any JAX-RS implementation like [jersey](https://jersey.github.io/) and 
 AutoREST will make it trivial to create your clients (JRE, Android or GWT) using this same JAX-RS API definition.
-The lib includes a JRE (android compatible) and GWT clients, but it is strongly recommended to see the source code 
+The lib includes a JRE (android compatible) and GWT clients, but it is strongly recommended seeing the source code 
 and create your own request builder. 
 
 To keep the project simple only part of the JSR311 is supported:
@@ -20,10 +20,10 @@ To keep the project simple only part of the JSR311 is supported:
  to which segment the matrix param applies, @Encoded still not supported)
 * *@Consumer* and *@Producer*
 
-All included implementations requires to use [RxJava][rxjava] types (Observable, Single or Completable) as return types.
+All included implementations requires using [RxJava][rxjava] types (Observable, Single or Completable) as return types.
 This is mandatory to share the same interface between the client and the server, because the server requires a 
-synchronous return value but the client requires an asynchronous one. [RxJava][rxjava] types allows to get both 
-strategies using the same type. Also those containers describe perfectly all available JSON responses, empty, one and 
+synchronous return value, but the client requires an asynchronous one. [RxJava][rxjava] types allows to get both 
+strategies using the same type. Also, those containers describe perfectly all available JSON responses, empty, one and 
 many objects (see response containers) which make client implementation and response parsing much easier.
 
 ## Download
@@ -54,7 +54,7 @@ public class ExampleEntryPoint implements EntryPoint {
     public void onModuleLoad() {
         Nominatim nominatim = new Nominatim_RestServiceModel(() -> osm());
         nominatim.search("Málaga,España", "json").subscribe(n -> {
-            GWT.log("[" + (int) (n.importance * 10.) + "] " + n.display_name + " (" + n.lon + "," + n.lat + ")");
+            GWT.log("[" + (n.importance * 10.) + "] " + n.display_name + " (" + n.lon + "," + n.lat + ")");
         });
     }
 
