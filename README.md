@@ -1,7 +1,7 @@
 # AutoREST, request metadata organizer
 
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.intendia.gwt.autorest/autorest-parent/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.intendia.gwt.autorest/autorest-parent)
-[![Build Status](https://travis-ci.org/intendia-oss/autorest.svg)](https://travis-ci.org/intendia-oss/autorest)
+[![Build](https://github.com/intendia-oss/autorest/actions/workflows/maven.yml/badge.svg)](https://github.com/intendia-oss/autorest/actions/workflows/maven.yml)
 [![Join the chat at https://gitter.im/intendia-oss/autorest](https://badges.gitter.im/intendia-oss/autorest.svg)](https://gitter.im/intendia-oss/autorest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 *A source code generator to organize and gather metadata from RESTful service calls (JSR311) and make it trivial
