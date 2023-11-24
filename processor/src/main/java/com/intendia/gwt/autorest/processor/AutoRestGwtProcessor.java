@@ -105,8 +105,7 @@ public class AutoRestGwtProcessor extends AbstractProcessor {
                 .addAnnotation(Inject.class)
                 .addModifiers(PUBLIC)
                 .addParameter(TypeName.get(ResourceVisitor.Supplier.class), "parent", FINAL)
-                .addStatement("super(new $T() { public $T get() { return $L.get().path($S); } })",
-                        ResourceVisitor.Supplier.class, ResourceVisitor.class, "parent", rsPath)
+                .addStatement("super(() -> $L.get().path($S))", "parent", rsPath)
                 .build());
 
         List<ExecutableElement> methods = restService.getEnclosedElements().stream()

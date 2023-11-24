@@ -57,9 +57,9 @@ public class ResourceVisitorTest {
                 @QueryParam("qS") String qS, @QueryParam("qI") int qI, @QueryParam("qIs") List<Integer> qIs,
                 @HeaderParam("hS") String hS, @HeaderParam("hI") int hI);
 
-        @GwtIncompatible Response gwtIncompatible();
+        @SuppressWarnings("UnusedReturnValue") @GwtIncompatible Response gwtIncompatible();
     }
 
     @Retention(RetentionPolicy.CLASS) @Target(ElementType.METHOD)
-    public @interface GwtIncompatible {}
+    public @interface GwtIncompatible { }
 }

@@ -2,7 +2,7 @@ package com.intendia.gwt.autorest.client;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.Test;
 
@@ -12,7 +12,7 @@ public class ResourceVisitorTest {
         // check root path is accepted (this is a bit obscure, currently anything starting with ".*?//" is a root path)
         MyCollectorResourceVisitor rb0 = new MyCollectorResourceVisitor("http://base/");
         assertThat(rb0.uri(), equalTo("http://base"));
-        // basic path an param check
+        // basic path a param check
         MyCollectorResourceVisitor rb1 = (MyCollectorResourceVisitor) new MyCollectorResourceVisitor("http://base")
                 .path("path").param("p1", "v1");
         assertThat(rb1.uri(), equalTo("http://base/path?p1=v1"));
@@ -27,7 +27,7 @@ public class ResourceVisitorTest {
     }
 
     private static class MyCollectorResourceVisitor extends CollectorResourceVisitor {
-        private MyCollectorResourceVisitor(String base) {super(base);}
+        private MyCollectorResourceVisitor(String base) { super(base); }
         @Override protected String encodeComponent(String str) { return str.replaceAll(":", "%3A"); }
         @Override public <T> T as(Class<? super T> container, Class<?> type) { return null; }
     }
