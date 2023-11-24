@@ -52,6 +52,7 @@
         <module>gwt</module>
         <module>jre</module>
         <module>processor</module>
+        <module>test</module>
     </modules>
 
     <properties>
